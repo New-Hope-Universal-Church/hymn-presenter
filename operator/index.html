@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NHUC Hymn Projector</title>
+  <link rel="stylesheet" href="operator.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="app-logo">
+        <img class="" src="../assets/images/logo-transparent.png" alt="NHUC logo">
+      </div>
+      <div class="app-title">
+        <span class="title-main">NHUC MEDIA</span>
+        <span class="title-sub">Methodist Hymn Projector</span>
+      </div>
+    </div>
+    <div class="header-controls">
+      <button id="btnProjection" class="btn btn-project" onclick="toggleProjection()">
+        <!-- <span class="btn-icon">⬡</span> -->
+        <span class="btn-label">Open Projection</span>
+      </button>
+      <button class="btn btn-blank" onclick="blankScreen()" title="Blank Screen (B)">
+        <!-- <span class="btn-icon">◻</span> -->
+        <span class="btn-label">Blank</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Main Layout ── -->
+  <main class="app-body">
+
+    <!-- ── Left Panel: Search + Hymn List ── -->
+    <aside class="panel panel-hymns">
+      <div class="search-wrapper">
+        <span class="search-icon">⌕</span>
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="Search by number or title..."
+          oninput="onSearch(this.value)"
+          autofocus
+        />
+        <span class="search-clear" id="searchClear" onclick="clearSearch()">✕</span>
+      </div>
+      <div class="panel-label">HYMNS <span id="hymnCount" class="count-badge">0</span></div>
+      <ul id="hymnList" class="hymn-list"></ul>
+    </aside>
+
+    <!-- ── Right Panel: Blocks (Verses/Refrains) ── -->
+    <section class="panel panel-blocks">
+      <div class="selected-hymn-header" id="selectedHymnHeader">
+        <div class="selected-hymn-empty">
+          <span class="empty-icon">♪</span>
+          <p>Select a hymn to view its verses</p>
+        </div>
+      </div>
+      <div class="panel-label">VERSES <span id="blockNav" class="block-nav"></span></div>
+      <ul id="blockList" class="block-list"></ul>
+    </section>
+
+  </main>
+
+  <!-- ── Status Bar ── -->
+  <footer class="status-bar">
+    <span id="statusText" class="status-text">Ready — Select a hymn to begin</span>
+    <div class="status-right">
+      <span class="shortcut-hint">← → Arrow keys to navigate</span>
+      <span class="shortcut-hint">B to blank screen</span>
+      <div class="projection-indicator" id="projectionIndicator">
+        <span class="indicator-dot"></span>
+        <span class="indicator-label">No Projection</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="operator.js"></script>
+</body>
+</html>

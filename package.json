@@ -1,0 +1,32 @@
+{
+  "name": "nhuc-hymns-projector",
+  "version": "1.0.0",
+  "description": "Methodist Hymn Projector built for New Hope Universal Church (NHUC)",
+  "author": {"name": "Aaron Katey Kudadjie", "github": "Adehwam@21"},
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^40.6.1",
+    "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "sql.js": "^1.11.0"
+  },
+  "build": {
+    "appId": "com.nhuc.hymnprojector",
+    "productName": "NHUC Hymn Projector",
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/electron*"
+    ]
+  }
+}

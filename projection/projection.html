@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MHB — Projection</title>
+  <link rel="stylesheet" href="projection.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Main projection screen -->
+  <div class="projection-screen" id="screen">
+
+    <!-- Idle state (shown when nothing is projected) -->
+    <div class="idle-state" id="idleState">
+      <div class="idle-cross">
+        <div class="app-logo">
+          <img class="" src="../assets/images/logo-transparent.png" alt="NHUC logo">
+        </div>
+      </div>
+      <div class="idle-church">NHUC MEDIA</div>
+    </div>
+
+    <!-- Content state (shown when a verse is projected) -->
+    <div class="content-state" id="contentState" style="display:none;">
+      <div class="hymn-meta">
+        <span class="hymn-number-badge" id="hymnNumber"></span>
+        <span class="hymn-title-display" id="hymnTitle"></span>
+      </div>
+      <div class="block-label-display" id="blockLabel"></div>
+      <div class="verse-text" id="verseText"></div>
+      <div class="block-counter" id="blockCounter"></div>
+    </div>
+
+    <!-- Blank state -->
+    <div class="blank-state" id="blankState" style="display:none;"></div>
+
+  </div>
+
+  <script src="projection.js"></script>
+</body>
+</html>
