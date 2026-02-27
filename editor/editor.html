@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hymn Editor</title>
+    <link rel="stylesheet" href="editor.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+
+    <header class="editor-header">
+        <div class="header-left">
+            <div class="app-logo">
+                <img src="../assets/images/logo-transparent.png" alt="NHUC logo">
+            </div>
+            <div class="app-title">
+                <span class="title-main">Hymn Editor</span>
+                <span class="title-sub">Create · Edit · Delete Hymns</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <span id="saveStatus" class="save-status"></span>
+            <button class="btn btn-secondary" onclick="window.close()">← Back to Projector</button>
+        </div>
+    </header>
+
+    <div class="editor-body">
+
+        <!-- ── Left: Books + Hymn List ── -->
+        <aside class="panel panel-left">
+
+            <!-- Books Section -->
+            <div class="books-section">
+                <div class="books-header">
+                    <span class="books-label">HYMN BOOKS</span>
+                    <button class="btn-icon-sm" onclick="openAddBook()" title="Add new book">+</button>
+                </div>
+                <ul id="bookList" class="book-list"></ul>
+
+                <!-- Add book inline form -->
+                <div id="addBookForm" class="add-book-form" style="display:none;">
+                    <input type="text" id="newBookName" class="form-input form-input-sm" placeholder="Book name..." />
+                    <div class="add-book-actions">
+                        <button class="btn btn-xs btn-secondary" onclick="cancelAddBook()">Cancel</button>
+                        <button class="btn btn-xs btn-save" onclick="saveNewBook()">Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hymn Search -->
+            <div class="search-wrapper">
+                <span class="search-icon">⌕</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search hymns..."
+                    oninput="onSearch(this.value)" />
+            </div>
+
+            <div class="panel-label">
+                HYMNS <span id="hymnCount" class="count-badge">0</span>
+                <button class="btn btn-add" id="btnAddHymn" onclick="openAddHymn()" style="display:none;">
+                    + Add Hymn
+                </button>
+            </div>
+            <ul id="hymnList" class="hymn-list"></ul>
+        </aside>
+
+        <!-- ── Middle: Block List ── -->
+        <section class="panel panel-middle">
+            <div class="panel-header" id="hymnHeader">
+                <div class="hymn-header-empty">Select a hymn to edit its verses</div>
+            </div>
+            <div class="panel-label">
+                VERSES
+                <span id="blockCount" class="count-badge">0</span>
+                <button class="btn btn-add" id="btnAddBlock" onclick="openAddBlock()" style="display:none;">
+                    + Add Verse
+                </button>
+            </div>
+            <ul id="blockList" class="block-list"></ul>
+        </section>
+
+        <!-- ── Right: Edit / Add Forms ── -->
+        <section class="panel panel-right" id="editPanel">
+
+            <!-- Empty state -->
+            <div class="edit-empty" id="editEmpty">
+                <span class="edit-empty-icon">✎</span>
+                <p>Select a verse to edit it</p>
+            </div>
+
+            <!-- Add Hymn form -->
+            <div class="edit-form" id="addHymnForm" style="display:none;">
+                <div class="form-header">
+                    <span class="form-title">Add New Hymn</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hymn Book</label>
+                    <select id="addHymnBook" class="form-input"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Number</label>
+                    <input type="number" id="addHymnNumber" class="form-input" placeholder="e.g. 101" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" id="addHymnTitle" class="form-input" placeholder="Hymn title" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Author <span class="form-hint">optional</span></label>
+                    <input type="text" id="addHymnAuthor" class="form-input" placeholder="Author name" />
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="cancelAddHymn()">Cancel</button>
+                    <button class="btn btn-save" onclick="saveNewHymn()">Add Hymn</button>
+                </div>
+            </div>
+
+            <!-- Edit Hymn form -->
+            <div class="edit-form" id="editHymnForm" style="display:none;">
+                <div class="form-header">
+                    <span class="form-title">Edit Hymn</span>
+                    <button class="btn btn-danger" onclick="deleteHymn()">Delete Hymn</button>
+                </div>
+                <input type="hidden" id="editHymnId" />
+                <div class="form-group">
+                    <label class="form-label">Hymn Book</label>
+                    <select id="editHymnBook" class="form-input"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Number</label>
+                    <input type="number" id="editHymnNumber" class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" id="editHymnTitle" class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Author <span class="form-hint">optional</span></label>
+                    <input type="text" id="editHymnAuthor" class="form-input" />
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="cancelEditHymn()">Cancel</button>
+                    <button class="btn btn-save" onclick="saveHymn()">Save Hymn</button>
+                </div>
+            </div>
+
+            <!-- Edit Block form -->
+            <div class="edit-form" id="editForm" style="display:none;">
+                <div class="form-header">
+                    <span id="formTitle" class="form-title">Edit Verse</span>
+                    <button class="btn btn-danger" onclick="deleteBlock()">Delete</button>
+                </div>
+                <input type="hidden" id="fieldBlockId" />
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <div class="type-selector">
+                        <button class="type-btn active" data-type="verse" onclick="selectType('verse')">Verse</button>
+                        <button class="type-btn" data-type="refrain" onclick="selectType('refrain')">Refrain</button>
+                        <button class="type-btn" data-type="chorus" onclick="selectType('chorus')">Chorus</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="fieldLabel">Label <span class="form-hint">e.g. Verse 1</span></label>
+                    <input type="text" id="fieldLabel" class="form-input" placeholder="Verse 1" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="fieldText">Text <span class="form-hint">Each line break = new line on
+                            screen</span></label>
+                    <textarea id="fieldText" class="form-textarea" rows="9"
+                        placeholder="Enter verse text here..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Position</label>
+                    <div class="position-controls">
+                        <button class="btn btn-secondary" onclick="moveBlock(-1)">↑ Move Up</button>
+                        <span class="position-value" id="positionDisplay"></span>
+                        <button class="btn btn-secondary" onclick="moveBlock(1)">↓ Move Down</button>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+                    <button class="btn btn-save" onclick="saveBlock()">Save Changes</button>
+                </div>
+            </div>
+
+            <!-- Add Block form -->
+            <div class="edit-form" id="addForm" style="display:none;">
+                <div class="form-header">
+                    <span class="form-title">Add New Verse</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <div class="type-selector">
+                        <button class="type-btn active" data-type="verse" data-form="add"
+                            onclick="selectTypeAdd('verse')">Verse</button>
+                        <button class="type-btn" data-type="refrain" data-form="add"
+                            onclick="selectTypeAdd('refrain')">Refrain</button>
+                        <button class="type-btn" data-type="chorus" data-form="add"
+                            onclick="selectTypeAdd('chorus')">Chorus</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="addFieldLabel">Label</label>
+                    <input type="text" id="addFieldLabel" class="form-input" placeholder="Verse 1" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="addFieldText">Text</label>
+                    <textarea id="addFieldText" class="form-textarea" rows="9"
+                        placeholder="Enter verse text here..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="cancelAdd()">Cancel</button>
+                    <button class="btn btn-save" onclick="saveNewBlock()">Add Verse</button>
+                </div>
+            </div>
+
+        </section>
+    </div>
+
+    <script src="editor.js"></script>
+</body>
+
+</html>

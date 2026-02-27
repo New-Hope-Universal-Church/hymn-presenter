@@ -9,7 +9,8 @@
   --accent:       #c9a84c;
 
   --font-display: 'Cinzel', serif;
-  --font-verse:   'EB Garamond', Georgia, serif;
+  --font-verse: Arial, serif;
+  /* --font-verse:   'EB Garamond', Georgia, serif; */
 
   --transition: 400ms ease;
 }
@@ -89,7 +90,7 @@ html, body {
 
 .idle-church {
   font-family: var(--font-display);
-  font-size: clamp(14px, 2vw, 22px);
+  font-size: clamp(20px, 2vw, 22px);
   letter-spacing: 4px;
   text-transform: uppercase;
   color: var(--text-label);
@@ -140,11 +141,15 @@ html, body {
 
 .hymn-title-display {
   font-family: var(--font-display);
-  font-size: clamp(18px, 1.3vw, 20px);
+  font-size: clamp(20px, 1.3vw, 22px);
   font-weight: 800;
   color: var(--text-meta);
   letter-spacing: 1px;
   max-width: 100vw;
+  letter-spacing: 2px;
+  padding: 4px 12px;
+  border: 1px solid #ee1515df;
+  border-radius: 20px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -167,10 +172,10 @@ html, body {
   font-family: var(--font-display);
   font-size: clamp(18px, 1.2vw, 20px);
   font-weight: 900;
-  color: var(--accent);
+  color: var(--font-verse);
   letter-spacing: 2px;
   padding: 4px 12px;
-  border: 1px solid rgba(190, 157, 66, 0.887);
+  border: 1px solid #08631c;
   border-radius: 20px;
 }
 
@@ -182,9 +187,9 @@ html, body {
 /* The actual verse text */
 .verse-text {
   font-family: var(--font-verse);
-  font-size: clamp(40px, 4.5vw, 62px);
+  font-size: clamp(38px, 4.5vw, 62px);
   font-weight: 600;
-  line-height: 1.105;
+  line-height: 1.15;
   color: var(--text-verse);
   white-space: pre-line;
   text-align: center;

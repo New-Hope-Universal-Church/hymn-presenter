@@ -1,37 +1,39 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Expose safe APIs to renderer processes
 contextBridge.exposeInMainWorld('hymnAPI', {
 
-  // Search hymns by number or title
-  searchHymns: (query) => ipcRenderer.invoke('search-hymns', query),
+  // ── Books ──────────────────────────────────────────────
+  getBooks:   ()     => ipcRenderer.invoke('get-books'),
+  addBook:    (name) => ipcRenderer.invoke('add-book', name),
+  deleteBook: (id)   => ipcRenderer.invoke('delete-book', id),
 
-  // Get all blocks for a hymn
+  // ── Hymns ──────────────────────────────────────────────
+  searchHymns:  (query, bookId) => ipcRenderer.invoke('search-hymns', { query, bookId }),
+  addHymn:      (data)          => ipcRenderer.invoke('add-hymn', data),
+  updateHymn:   (data)          => ipcRenderer.invoke('update-hymn', data),
+  deleteHymn:   (id)            => ipcRenderer.invoke('delete-hymn', id),
+
+  // ── Blocks ─────────────────────────────────────────────
   getHymnBlocks: (hymnId) => ipcRenderer.invoke('get-hymn-blocks', hymnId),
+  updateBlock:   (data)   => ipcRenderer.invoke('update-block', data),
+  deleteBlock:   (id)     => ipcRenderer.invoke('delete-block', id),
+  addBlock:      (data)   => ipcRenderer.invoke('add-block', data),
+  reorderBlocks: (data)   => ipcRenderer.invoke('reorder-blocks', data),
 
-  // Projection controls
-  openProjection: () => ipcRenderer.invoke('open-projection'),
-  closeProjection: () => ipcRenderer.invoke('close-projection'),
-  isProjecting: () => ipcRenderer.invoke('is-projecting'),
+  // ── Projection ─────────────────────────────────────────
+  openProjection:  () =>     ipcRenderer.invoke('open-projection'),
+  closeProjection: () =>     ipcRenderer.invoke('close-projection'),
+  isProjecting:    () =>     ipcRenderer.invoke('is-projecting'),
+  projectBlock:    (data) => ipcRenderer.invoke('project-block', data),
+  blankScreen:     () =>     ipcRenderer.invoke('blank-screen'),
+  setFontSize:     (size) => ipcRenderer.invoke('set-font-size', size),
 
-  // Project a block to the projection screen
-  projectBlock: (data) => ipcRenderer.invoke('project-block', data),
+  // ── Windows ────────────────────────────────────────────
+  openEditor: () => ipcRenderer.invoke('open-editor'),
 
-  // Blank the projection screen
-  blankScreen: () => ipcRenderer.invoke('blank-screen'),
-
-  // Listen for projection window closed event
-  onProjectionClosed: (callback) => {
-    ipcRenderer.on('projection-closed', callback);
-  },
-
-  // Listen for display-block event (used by projection window)
-  onDisplayBlock: (callback) => {
-    ipcRenderer.on('display-block', (event, data) => callback(data));
-  },
-
-  // Listen for blank screen event (used by projection window)
-  onBlankScreen: (callback) => {
-    ipcRenderer.on('blank-screen', callback);
-  },
+  // ── Listeners ──────────────────────────────────────────
+  onProjectionClosed: (cb) => ipcRenderer.on('projection-closed', cb),
+  onDisplayBlock:     (cb) => ipcRenderer.on('display-block', (e, data) => cb(data)),
+  onBlankScreen:      (cb) => ipcRenderer.on('blank-screen', cb),
+  onSetFontSize:      (cb) => ipcRenderer.on('set-font-size', (e, size) => cb(size)),
 });

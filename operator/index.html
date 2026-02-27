@@ -1,33 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NHUC Hymn Projector</title>
   <link rel="stylesheet" href="operator.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
 </head>
+
 <body>
 
   <!-- ── Header ── -->
   <header class="app-header">
     <div class="header-left">
       <div class="app-logo">
-        <img class="" src="../assets/images/logo-transparent.png" alt="NHUC logo">
+        <img src="../assets/images/logo-transparent.png" alt="NHUC logo">
       </div>
       <div class="app-title">
         <span class="title-main">NHUC MEDIA</span>
-        <span class="title-sub">Methodist Hymn Projector</span>
+        <span class="title-sub">Hymn Projector</span>
       </div>
     </div>
     <div class="header-controls">
+      <div class="font-size-control">
+        <span class="font-size-label">TEXT</span>
+        <button class="btn btn-font" onclick="adjustFontSize(-1)">A−</button>
+        <span class="font-size-value" id="fontSizeValue">200%</span>
+        <button class="btn btn-font" onclick="adjustFontSize(1)">A+</button>
+      </div>
+      <button class="btn btn-editor" onclick="window.hymnAPI.openEditor()">
+        <!-- <span class="btn-icon">✎</span> -->
+        <span class="btn-label">Hymn Editor</span>
+      </button>
+      <div class="header-divider"></div>
       <button id="btnProjection" class="btn btn-project" onclick="toggleProjection()">
-        <!-- <span class="btn-icon">⬡</span> -->
         <span class="btn-label">Open Projection</span>
       </button>
       <button class="btn btn-blank" onclick="blankScreen()" title="Blank Screen (B)">
-        <!-- <span class="btn-icon">◻</span> -->
         <span class="btn-label">Blank</span>
       </button>
     </div>
@@ -36,25 +49,27 @@
   <!-- ── Main Layout ── -->
   <main class="app-body">
 
-    <!-- ── Left Panel: Search + Hymn List ── -->
+    <!-- ── Left Panel: Book Tabs + Search + Hymn List ── -->
     <aside class="panel panel-hymns">
+
+      <!-- Book Filter -->
+      <div class="book-filter-wrapper">
+        <select id="bookFilter" class="book-filter-select" onchange="selectBook(this.value)">
+          <option value="">All Hymn Books</option>
+        </select>
+      </div>
+
       <div class="search-wrapper">
         <span class="search-icon">⌕</span>
-        <input
-          type="text"
-          id="searchInput"
-          class="search-input"
-          placeholder="Search by number or title..."
-          oninput="onSearch(this.value)"
-          autofocus
-        />
+        <input type="text" id="searchInput" class="search-input" placeholder="Search by number or title..."
+          oninput="onSearch(this.value)" autofocus />
         <span class="search-clear" id="searchClear" onclick="clearSearch()">✕</span>
       </div>
       <div class="panel-label">HYMNS <span id="hymnCount" class="count-badge">0</span></div>
       <ul id="hymnList" class="hymn-list"></ul>
     </aside>
 
-    <!-- ── Right Panel: Blocks (Verses/Refrains) ── -->
+    <!-- ── Right Panel: Blocks ── -->
     <section class="panel panel-blocks">
       <div class="selected-hymn-header" id="selectedHymnHeader">
         <div class="selected-hymn-empty">
@@ -72,6 +87,7 @@
   <footer class="status-bar">
     <span id="statusText" class="status-text">Ready — Select a hymn to begin</span>
     <div class="status-right">
+      <span class="shortcut-hint">+/- To change verse font size</span>
       <span class="shortcut-hint">← → Arrow keys to navigate</span>
       <span class="shortcut-hint">B to blank screen</span>
       <div class="projection-indicator" id="projectionIndicator">
@@ -83,4 +99,5 @@
 
   <script src="operator.js"></script>
 </body>
+
 </html>

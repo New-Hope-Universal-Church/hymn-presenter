@@ -73,5 +73,9 @@ window.hymnAPI.onBlankScreen(() => {
   blankScreen();
 });
 
+window.hymnAPI.onSetFontSize((size) => {
+  elVerseText.style.fontSize = size + '%';
+});
+
 // Start in idle state
 showIdle();

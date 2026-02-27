@@ -1,33 +1,74 @@
 // ─────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────
-let allHymns = [];
-let currentHymn = null;
-let currentBlocks = [];
+let allHymns           = [];
+let allBooks           = [];
+let currentHymn        = null;
+let currentBlocks      = [];
 let selectedBlockIndex = -1;
 let projectedBlockIndex = -1;
-let isProjecting = false;
-let searchTimeout = null;
+let isProjecting       = false;
+let searchTimeout      = null;
+let activeBookId       = null; // null = All Books
+
+// Font size
+let currentFontSize = 200;
 
 // ─────────────────────────────────────────────
 // Init
 // ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  await loadBooks();
   await loadHymns('');
   setupKeyboard();
   setupProjectionListener();
-
-  // Keep focus on body so keyboard shortcuts always work
   document.body.setAttribute('tabindex', '0');
   document.body.focus();
 });
+
+// ─────────────────────────────────────────────
+// Books
+// ─────────────────────────────────────────────
+async function loadBooks() {
+  allBooks = await window.hymnAPI.getBooks();
+  renderBookTabs();
+}
+
+function renderBookTabs() {
+  const select = document.getElementById('bookFilter');
+  if (!select) return;
+
+  const current = select.value;
+
+  select.innerHTML = `<option value="">All Hymn Books</option>` +
+    allBooks.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+
+  select.value = current || '';
+}
+
+async function selectBook(value) {
+  activeBookId = value ? parseInt(value) : null;
+  currentHymn = null;
+  selectedBlockIndex  = -1;
+  projectedBlockIndex = -1;
+
+  document.getElementById('selectedHymnHeader').innerHTML = `
+    <div class="selected-hymn-empty">
+      <span class="empty-icon">♪</span>
+      <p>Select a hymn to view its verses</p>
+    </div>`;
+  document.getElementById('blockList').innerHTML = '';
+  document.getElementById('blockNav').textContent = '';
+
+  await loadHymns(document.getElementById('searchInput').value);
+}
 
 // ─────────────────────────────────────────────
 // Load Hymns
 // ─────────────────────────────────────────────
 async function loadHymns(query) {
   try {
-    const hymns = await window.hymnAPI.searchHymns(query);
+    const hymns = await window.hymnAPI.searchHymns(query, activeBookId);
     allHymns = hymns;
     renderHymnList(hymns);
   } catch (err) {
@@ -40,12 +81,11 @@ async function loadHymns(query) {
 // Render Hymn List
 // ─────────────────────────────────────────────
 function renderHymnList(hymns) {
-  const list = document.getElementById('hymnList');
+  const list       = document.getElementById('hymnList');
   const countBadge = document.getElementById('hymnCount');
-
   countBadge.textContent = hymns.length;
 
-  if (hymns.length === 0) {
+  if (!hymns.length) {
     list.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">♪</div>
@@ -56,8 +96,7 @@ function renderHymnList(hymns) {
 
   list.innerHTML = hymns.map((hymn, i) => `
     <li class="hymn-item ${currentHymn && currentHymn.id === hymn.id ? 'active' : ''}"
-        onclick="selectHymn(${i})"
-        data-index="${i}">
+        onclick="selectHymn(${i})" data-index="${i}">
       <span class="hymn-number">${hymn.number}</span>
       <div class="hymn-info">
         <div class="hymn-title">${hymn.title}</div>
@@ -75,28 +114,28 @@ async function selectHymn(index) {
   if (!hymn) return;
 
   currentHymn = hymn;
-  selectedBlockIndex = -1;
+  selectedBlockIndex  = -1;
   projectedBlockIndex = -1;
 
-  // Highlight in list
   document.querySelectorAll('.hymn-item').forEach(el => el.classList.remove('active'));
   const item = document.querySelector(`.hymn-item[data-index="${index}"]`);
   if (item) item.classList.add('active');
 
-  // Update header
   renderHymnHeader(hymn);
 
-  // Load blocks
   try {
     currentBlocks = await window.hymnAPI.getHymnBlocks(hymn.id);
     renderBlockList(currentBlocks);
-    setStatus(`MHB ${hymn.number} — ${hymn.title} — ${currentBlocks.length} blocks`);
+
+    // Show book name in status if available
+    const book = allBooks.find(b => b.id === hymn.book_id);
+    const bookLabel = book ? ` · ${book.name}` : '';
+    setStatus(`Hymn ${hymn.number} — ${hymn.title}${bookLabel} — ${currentBlocks.length} blocks`);
   } catch (err) {
     console.error('Failed to load blocks:', err);
     setStatus('Error loading hymn verses.');
   }
 
-  // Return focus to body so keyboard shortcuts keep working
   returnFocus();
 }
 
@@ -104,10 +143,11 @@ async function selectHymn(index) {
 // Render Hymn Header
 // ─────────────────────────────────────────────
 function renderHymnHeader(hymn) {
+  const book = allBooks.find(b => b.id === hymn.book_id);
   const header = document.getElementById('selectedHymnHeader');
   header.innerHTML = `
     <div class="selected-hymn-info">
-      <div class="selected-number">MHB ${hymn.number}</div>
+      <div class="selected-number">${book ? book.name + ' · ' : ''}No. ${hymn.number}</div>
       <div class="selected-title">${hymn.title}</div>
       ${hymn.author ? `<div class="selected-author">${hymn.author}</div>` : ''}
     </div>
@@ -119,11 +159,10 @@ function renderHymnHeader(hymn) {
 // ─────────────────────────────────────────────
 function renderBlockList(blocks) {
   const list = document.getElementById('blockList');
-  const nav = document.getElementById('blockNav');
-
+  const nav  = document.getElementById('blockNav');
   nav.textContent = `${blocks.length} blocks`;
 
-  if (blocks.length === 0) {
+  if (!blocks.length) {
     list.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">♪</div>
@@ -134,10 +173,9 @@ function renderBlockList(blocks) {
 
   list.innerHTML = blocks.map((block, i) => `
     <li class="block-item type-${block.type}
-               ${i === selectedBlockIndex ? 'active' : ''}
+               ${i === selectedBlockIndex  ? 'active'    : ''}
                ${i === projectedBlockIndex ? 'projected' : ''}"
-        onclick="selectAndProject(${i})"
-        data-index="${i}">
+        onclick="selectAndProject(${i})" data-index="${i}">
       <div class="block-label">${block.label}</div>
       <div class="block-preview">${formatPreview(block.text)}</div>
       <span class="projected-badge">● LIVE</span>
@@ -145,43 +183,36 @@ function renderBlockList(blocks) {
   `).join('');
 }
 
-// ─────────────────────────────────────────────
-// Format preview text (show first 3 lines)
-// ─────────────────────────────────────────────
 function formatPreview(text) {
   const lines = text.split('\n').filter(l => l.trim());
   return lines.slice(0, 3).join('\n') + (lines.length > 3 ? '\n...' : '');
 }
 
 // ─────────────────────────────────────────────
-// Select and Project a Block
+// Select and Project
 // ─────────────────────────────────────────────
 async function selectAndProject(index) {
   if (!currentHymn || !currentBlocks[index]) return;
 
-  selectedBlockIndex = index;
+  selectedBlockIndex  = index;
   projectedBlockIndex = index;
   const block = currentBlocks[index];
 
-  // Re-render to update active/projected states
   renderBlockList(currentBlocks);
 
-  // Scroll block into view
   const el = document.querySelector(`.block-item[data-index="${index}"]`);
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  // Send to projection window
   try {
     await window.hymnAPI.projectBlock({
       hymnNumber: currentHymn.number,
-      hymnTitle: currentHymn.title,
-      label: block.label,
-      type: block.type,
-      text: block.text,
+      hymnTitle:  currentHymn.title,
+      label:  block.label,
+      type:   block.type,
+      text:   block.text,
       position: index + 1,
-      total: currentBlocks.length,
+      total:    currentBlocks.length,
     });
-
     isProjecting = true;
     updateProjectionIndicator(true);
     setStatus(`Projecting: ${block.label} — ${currentHymn.title}`);
@@ -190,12 +221,11 @@ async function selectAndProject(index) {
     setStatus('Failed to send to projection window.');
   }
 
-  // CRITICAL — return focus to body after click so keyboard shortcuts work
   returnFocus();
 }
 
 // ─────────────────────────────────────────────
-// Toggle Projection Window
+// Projection Controls
 // ─────────────────────────────────────────────
 async function toggleProjection() {
   const btn = document.getElementById('btnProjection');
@@ -214,13 +244,9 @@ async function toggleProjection() {
     updateProjectionIndicator(true);
     setStatus('Projection opened — select a verse to project.');
   }
-
   returnFocus();
 }
 
-// ─────────────────────────────────────────────
-// Blank Screen
-// ─────────────────────────────────────────────
 async function blankScreen() {
   await window.hymnAPI.blankScreen();
   projectedBlockIndex = -1;
@@ -230,16 +256,22 @@ async function blankScreen() {
 }
 
 // ─────────────────────────────────────────────
+// Font Size
+// ─────────────────────────────────────────────
+async function adjustFontSize(direction) {
+  currentFontSize = Math.min(400, Math.max(50, currentFontSize + direction * 20));
+  document.getElementById('fontSizeValue').textContent = currentFontSize + '%';
+  await window.hymnAPI.setFontSize(currentFontSize);
+}
+
+// ─────────────────────────────────────────────
 // Search
 // ─────────────────────────────────────────────
 function onSearch(value) {
   const clearBtn = document.getElementById('searchClear');
   clearBtn.classList.toggle('visible', value.length > 0);
-
   clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => {
-    loadHymns(value.trim());
-  }, 250);
+  searchTimeout = setTimeout(() => loadHymns(value.trim()), 250);
 }
 
 function clearSearch() {
@@ -251,71 +283,34 @@ function clearSearch() {
 }
 
 // ─────────────────────────────────────────────
-// Keyboard Navigation
+// Keyboard
 // ─────────────────────────────────────────────
 function setupKeyboard() {
   document.addEventListener('keydown', async (e) => {
     const searchInput = document.getElementById('searchInput');
-
-    // If user is typing in search box
     if (document.activeElement === searchInput) {
-      if (e.key === 'Escape') {
-        clearSearch();
-        searchInput.blur();
-        returnFocus();
-      }
-      return; // let all other keys type normally in search
+      if (e.key === 'Escape') { clearSearch(); searchInput.blur(); returnFocus(); }
+      return;
     }
-
     switch (e.key) {
-      case 'ArrowRight':
-      case 'ArrowDown':
-        e.preventDefault();
-        navigateBlock(1);
-        break;
-
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        e.preventDefault();
-        navigateBlock(-1);
-        break;
-
-      case 'b':
-      case 'B':
-        e.preventDefault();
-        blankScreen();
-        break;
-
-      case 'Escape':
-        e.preventDefault();
-        blankScreen();
-        break;
-
-      case '/':
-        e.preventDefault();
-        searchInput.focus();
-        break;
+      case 'ArrowRight': case 'ArrowDown':  e.preventDefault(); navigateBlock(1);  break;
+      case 'ArrowLeft':  case 'ArrowUp':    e.preventDefault(); navigateBlock(-1); break;
+      case 'b': case 'B':  e.preventDefault(); blankScreen(); break;
+      case 'Escape':       e.preventDefault(); blankScreen(); break;
+      case '/':            e.preventDefault(); searchInput.focus(); break;
     }
   });
 }
 
 function navigateBlock(direction) {
   if (!currentBlocks.length) return;
-
   let newIndex = selectedBlockIndex + direction;
   if (newIndex < 0) newIndex = 0;
   if (newIndex >= currentBlocks.length) newIndex = currentBlocks.length - 1;
-
-  if (newIndex !== selectedBlockIndex) {
-    selectAndProject(newIndex);
-  }
+  if (newIndex !== selectedBlockIndex) selectAndProject(newIndex);
 }
 
-// ─────────────────────────────────────────────
-// Return focus to body (keeps keyboard shortcuts alive)
-// ─────────────────────────────────────────────
 function returnFocus() {
-  // Small timeout to let click events finish first
   setTimeout(() => {
     if (document.activeElement !== document.getElementById('searchInput')) {
       document.body.focus();
@@ -342,9 +337,8 @@ function setupProjectionListener() {
 // ─────────────────────────────────────────────
 function updateProjectionIndicator(live) {
   const indicator = document.getElementById('projectionIndicator');
-  const label = indicator.querySelector('.indicator-label');
   indicator.classList.toggle('live', live);
-  label.textContent = live ? 'Projecting' : 'No Projection';
+  indicator.querySelector('.indicator-label').textContent = live ? 'Projecting' : 'No Projection';
 }
 
 function setStatus(text) {
