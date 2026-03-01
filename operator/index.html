@@ -1,17 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NHUC Hymn Projector</title>
   <link rel="stylesheet" href="operator.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link
-    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
-
 <body>
 
   <!-- ── Header ── -->
@@ -28,15 +24,19 @@
     <div class="header-controls">
       <div class="font-size-control">
         <span class="font-size-label">TEXT</span>
-        <button class="btn btn-font" onclick="adjustFontSize(-1)">A−</button>
+        <button class="btn-font" onclick="adjustFontSize(-1)">A−</button>
         <span class="font-size-value" id="fontSizeValue">200%</span>
-        <button class="btn btn-font" onclick="adjustFontSize(1)">A+</button>
+        <button class="btn-font" onclick="adjustFontSize(1)">A+</button>
       </div>
-      <button class="btn btn-editor" onclick="window.hymnAPI.openEditor()">
-        <!-- <span class="btn-icon">✎</span> -->
+
+      <!-- Editor button — shows lock/unlock state -->
+      <button class="btn btn-editor" id="btnEditor" onclick="handleEditorClick()">
+        <span class="editor-lock-icon" id="editorLockIcon">🔒</span>
         <span class="btn-label">Hymn Editor</span>
       </button>
+
       <div class="header-divider"></div>
+
       <button id="btnProjection" class="btn btn-project" onclick="toggleProjection()">
         <span class="btn-label">Open Projection</span>
       </button>
@@ -46,7 +46,7 @@
     </div>
   </header>
 
-  <!-- ── Update Notification Bar ── -->
+  <!-- ── App Update Bar (app version updates) ── -->
   <div class="update-bar" id="updateBar" style="display:none;">
     <span class="update-icon">↑</span>
     <span class="update-message" id="updateMessage">A new version is available.</span>
@@ -57,19 +57,16 @@
   <!-- ── Main Layout ── -->
   <main class="app-body">
 
-    <!-- ── Left Panel: Book Tabs + Search + Hymn List ── -->
     <aside class="panel panel-hymns">
-
-      <!-- Book Filter -->
       <div class="book-filter-wrapper">
         <select id="bookFilter" class="book-filter-select" onchange="selectBook(this.value)">
           <option value="">All Hymn Books</option>
         </select>
       </div>
-
       <div class="search-wrapper">
         <span class="search-icon">⌕</span>
-        <input type="text" id="searchInput" class="search-input" placeholder="Search by number or title..."
+        <input type="text" id="searchInput" class="search-input"
+          placeholder="Search by number or title..."
           oninput="onSearch(this.value)" autofocus />
         <span class="search-clear" id="searchClear" onclick="clearSearch()">✕</span>
       </div>
@@ -77,7 +74,6 @@
       <ul id="hymnList" class="hymn-list"></ul>
     </aside>
 
-    <!-- ── Right Panel: Blocks ── -->
     <section class="panel panel-blocks">
       <div class="selected-hymn-header" id="selectedHymnHeader">
         <div class="selected-hymn-empty">
@@ -95,7 +91,6 @@
   <footer class="status-bar">
     <span id="statusText" class="status-text">Ready — Select a hymn to begin</span>
     <div class="status-right">
-      <span class="shortcut-hint">+/- To change verse font size</span>
       <span class="shortcut-hint">← → Arrow keys to navigate</span>
       <span class="shortcut-hint">B to blank screen</span>
       <div class="projection-indicator" id="projectionIndicator">
@@ -105,7 +100,44 @@
     </div>
   </footer>
 
+  <!-- ── Password Modal ── -->
+  <div class="modal-overlay" id="passwordOverlay" style="display:none;">
+    <div class="password-modal">
+      <div class="password-modal-icon">🔒</div>
+      <div class="password-modal-title">Editor Access</div>
+      <div class="password-modal-subtitle">Enter the password to unlock the hymn editor</div>
+      <input
+        type="password"
+        id="passwordInput"
+        class="password-input"
+        placeholder="Password"
+        onkeydown="if(event.key==='Enter') submitPassword()"
+        autocomplete="off"
+      />
+      <div class="password-error" id="passwordError" style="display:none;">
+        Incorrect password. Please try again.
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closePasswordModal()">Cancel</button>
+        <button class="btn btn-save" onclick="submitPassword()">Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DB Sync Modal ── -->
+  <div class="modal-overlay" id="syncOverlay" style="display:none;">
+    <div class="sync-modal">
+      <div class="sync-modal-icon" id="syncModalIcon">↓</div>
+      <div class="sync-modal-title" id="syncModalTitle">Checking for updates...</div>
+      <div class="sync-modal-message" id="syncModalMessage">Connecting to server</div>
+      <div class="sync-progress-bar" id="syncProgressBar" style="display:none;">
+        <div class="sync-progress-fill" id="syncProgressFill"></div>
+      </div>
+      <button class="btn btn-secondary sync-modal-close" id="syncModalClose"
+        onclick="closeSyncModal()" style="display:none;">Close</button>
+    </div>
+  </div>
+
   <script src="operator.js"></script>
 </body>
-
 </html>

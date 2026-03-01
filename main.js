@@ -1,12 +1,23 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Menu, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
-const path = require('path');
-const Database = require('./data/database');
+const crypto = require('crypto');
+const path   = require('path');
+const Database        = require('./data/database');
+const { syncDatabase } = require('./data/db-sync');
 
-let operatorWindow  = null;
+let operatorWindow   = null;
 let projectionWindow = null;
-let editorWindow    = null;
+let editorWindow     = null;
 let db = null;
+
+// ─────────────────────────────────────────────
+// Editor Auth
+// To generate your own hash, run in terminal:
+// node -e "console.log(require('crypto').createHash('sha256').update('yourpassword').digest('hex'))"
+// Default password: nhuc2024
+// ─────────────────────────────────────────────
+const EDITOR_PASSWORD_HASH = 'fa970510078cb0cf57571eb735d0cd23319f49357cdf844a1343edcf89e027ad';
+let editorUnlocked = false;
 
 // ─────────────────────────────────────────────
 // Operator Window
@@ -14,7 +25,7 @@ let db = null;
 function createOperatorWindow() {
   operatorWindow = new BrowserWindow({
     width: 1200, height: 750, minWidth: 900, minHeight: 600,
-    title: 'NHUC Hymn Projector',
+    title: 'Hymn Presemter',
     backgroundColor: '#0f0f17',
     icon: path.join(__dirname, 'assets/icons', 'logo-sharpened.ico'),
     webPreferences: {
@@ -81,9 +92,60 @@ function createEditorWindow() {
 }
 
 // ─────────────────────────────────────────────
+// App Menu
+// ─────────────────────────────────────────────
+function createAppMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Hymn Editor',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => { if (operatorWindow) operatorWindow.webContents.send('menu-open-editor'); }
+        },
+        { type: 'separator' },
+        { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Check for Database Updates',
+          click: () => { if (operatorWindow) operatorWindow.webContents.send('manual-db-sync'); }
+        },
+        { type: 'separator' },
+        {
+          label: 'About NHUC Hymn Projector',
+          click: () => {
+            dialog.showMessageBox({
+              type: 'info',
+              title: 'About Hymn Presenter',
+              message: 'Hymn Presenter',
+              detail: [
+                `Version: ${app.getVersion()}`,
+                `Built for New Hope Universal Church, Ghana`,
+                ``,
+                `Developer: Aaron Katey Kudadjie`,
+                `GitHub: https://github.com/Adehwam21/`,
+                ``,
+                `© ${new Date().getFullYear()} NHUC. All rights reserved.`
+              ].join('\n')
+            });
+          }
+        }
+      ]
+    }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+// ─────────────────────────────────────────────
 // App Ready
 // ─────────────────────────────────────────────
 app.whenReady().then(async () => {
+  createAppMenu();
   db = new Database();
   await db.connect();
   createOperatorWindow();
@@ -95,25 +157,57 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  editorUnlocked = false;
   if (process.platform !== 'darwin') app.quit();
+});
+
+// ─────────────────────────────────────────────
+// IPC — Editor Auth
+// ─────────────────────────────────────────────
+ipcMain.handle('verify-editor-password', (event, password) => {
+  const hash = crypto.createHash('sha256').update(password).digest('hex');
+  if (hash === EDITOR_PASSWORD_HASH) {
+    editorUnlocked = true;
+    return { success: true };
+  }
+  return { success: false };
+});
+
+ipcMain.handle('is-editor-unlocked', () => editorUnlocked);
+
+ipcMain.handle('open-editor', () => {
+  if (!editorUnlocked) return { locked: true };
+  createEditorWindow();
+  return { locked: false };
+});
+
+// ─────────────────────────────────────────────
+// IPC — DB Sync
+// ─────────────────────────────────────────────
+ipcMain.handle('trigger-db-sync', async () => {
+  const result = await syncDatabase((pct) => {
+    if (operatorWindow) operatorWindow.webContents.send('db-sync-progress', pct);
+  });
+  if (result.status === 'updated') {
+    try { await db.connect(); } catch (err) { console.error('DB reload failed:', err.message); }
+  }
+  if (operatorWindow) operatorWindow.webContents.send('db-sync-done', result);
+  return result;
 });
 
 // ─────────────────────────────────────────────
 // IPC — Books
 // ─────────────────────────────────────────────
 ipcMain.handle('get-books', () => {
-  try { return db.getAllBooks(); }
-  catch (err) { console.error(err); return []; }
+  try { return db.getAllBooks(); } catch (err) { console.error(err); return []; }
 });
 
 ipcMain.handle('add-book', (event, name) => {
-  try { return db.addBook(name); }
-  catch (err) { console.error(err); return null; }
+  try { return db.addBook(name); } catch (err) { console.error(err); return null; }
 });
 
 ipcMain.handle('delete-book', (event, id) => {
-  try { db.deleteBook(id); return true; }
-  catch (err) { console.error(err); return false; }
+  try { db.deleteBook(id); return true; } catch (err) { console.error(err); return false; }
 });
 
 // ─────────────────────────────────────────────
@@ -129,26 +223,22 @@ ipcMain.handle('search-hymns', (event, { query, bookId } = {}) => {
 });
 
 ipcMain.handle('add-hymn', (event, data) => {
-  try { return db.addHymn(data); }
-  catch (err) { console.error(err); return null; }
+  try { return db.addHymn(data); } catch (err) { console.error(err); return null; }
 });
 
 ipcMain.handle('update-hymn', (event, data) => {
-  try { db.updateHymn(data); return true; }
-  catch (err) { console.error(err); return false; }
+  try { db.updateHymn(data); return true; } catch (err) { console.error(err); return false; }
 });
 
 ipcMain.handle('delete-hymn', (event, id) => {
-  try { db.deleteHymn(id); return true; }
-  catch (err) { console.error(err); return false; }
+  try { db.deleteHymn(id); return true; } catch (err) { console.error(err); return false; }
 });
 
 // ─────────────────────────────────────────────
 // IPC — Blocks
 // ─────────────────────────────────────────────
 ipcMain.handle('get-hymn-blocks', (event, hymnId) => {
-  try { return db.getHymnBlocks(hymnId); }
-  catch (err) { console.error(err); return []; }
+  try { return db.getHymnBlocks(hymnId); } catch (err) { console.error(err); return []; }
 });
 
 ipcMain.handle('update-block', (event, { id, label, text, type }) => {
@@ -219,69 +309,32 @@ ipcMain.handle('set-font-size', (event, size) => {
 });
 
 // ─────────────────────────────────────────────
-// IPC — Windows
-// ─────────────────────────────────────────────
-ipcMain.handle('open-editor', () => { createEditorWindow(); return true; });
-
-
-
-
-
-// ─────────────────────────────────────────────
-// Auto Updater
+// Auto Updater (app version updates)
 // ─────────────────────────────────────────────
 function setupAutoUpdater() {
-  // Don't check for updates in development
   if (!app.isPackaged) return;
-
-  autoUpdater.autoDownload = false; // don't download automatically
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
 
-  // Check for updates 5 seconds after launch
   setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(err => {
-      console.log('Update check failed:', err.message);
-    });
+    autoUpdater.checkForUpdates().catch(err => console.log('Update check failed:', err.message));
   }, 5000);
 
-  // New version found — notify operator window
   autoUpdater.on('update-available', (info) => {
-    if (operatorWindow) {
-      operatorWindow.webContents.send('update-available', {
-        version: info.version,
-        releaseNotes: info.releaseNotes || ''
-      });
-    }
+    if (operatorWindow) operatorWindow.webContents.send('update-available', { version: info.version });
   });
 
-  // No update found — do nothing
-  autoUpdater.on('update-not-available', () => {
-    console.log('App is up to date.');
-  });
+  autoUpdater.on('update-not-available', () => console.log('App is up to date.'));
 
-  // User triggered download
-  ipcMain.handle('download-update', () => {
-    autoUpdater.downloadUpdate();
-    return true;
-  });
+  ipcMain.handle('download-update', () => { autoUpdater.downloadUpdate(); return true; });
 
-  // Download progress
   autoUpdater.on('download-progress', (progress) => {
-    if (operatorWindow) {
-      operatorWindow.webContents.send('update-progress', Math.round(progress.percent));
-    }
+    if (operatorWindow) operatorWindow.webContents.send('update-progress', Math.round(progress.percent));
   });
 
-  // Download complete — ready to install
   autoUpdater.on('update-downloaded', () => {
-    if (operatorWindow) {
-      operatorWindow.webContents.send('update-downloaded');
-    }
+    if (operatorWindow) operatorWindow.webContents.send('update-downloaded');
   });
 
-  // Install and restart
-  ipcMain.handle('install-update', () => {
-    autoUpdater.quitAndInstall();
-    return true;
-  });
+  ipcMain.handle('install-update', () => { autoUpdater.quitAndInstall(); return true; });
 }

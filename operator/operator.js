@@ -1,18 +1,18 @@
 // ─────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────
-let allHymns           = [];
-let allBooks           = [];
-let currentHymn        = null;
-let currentBlocks      = [];
-let selectedBlockIndex = -1;
+let allHymns            = [];
+let allBooks            = [];
+let currentHymn         = null;
+let currentBlocks       = [];
+let selectedBlockIndex  = -1;
 let projectedBlockIndex = -1;
-let isProjecting       = false;
-let searchTimeout      = null;
-let activeBookId       = null; // null = All Books
-
-// Font size
-let currentFontSize = 200;
+let isProjecting        = false;
+let searchTimeout       = null;
+let activeBookId        = null;
+let currentFontSize     = 200;
+let editorUnlocked      = false;
+let updateReady         = false;
 
 // ─────────────────────────────────────────────
 // Init
@@ -22,28 +22,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadHymns('');
   setupKeyboard();
   setupProjectionListener();
+  setupUpdateListeners();
+  setupSyncListeners();
   document.body.setAttribute('tabindex', '0');
   document.body.focus();
 });
 
-// ─────────────────────────────────────────────
-// Books
-// ─────────────────────────────────────────────
+// ═════════════════════════════════════════════
+// BOOKS
+// ═════════════════════════════════════════════
 async function loadBooks() {
   allBooks = await window.hymnAPI.getBooks();
-  renderBookTabs();
+  renderBookFilter();
 }
 
-function renderBookTabs() {
+function renderBookFilter() {
   const select = document.getElementById('bookFilter');
-  if (!select) return;
-
   const current = select.value;
-
   select.innerHTML = `<option value="">All Hymn Books</option>` +
     allBooks.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-
-  select.value = current || '';
+  if (current) select.value = current;
 }
 
 async function selectBook(value) {
@@ -63,9 +61,9 @@ async function selectBook(value) {
   await loadHymns(document.getElementById('searchInput').value);
 }
 
-// ─────────────────────────────────────────────
-// Load Hymns
-// ─────────────────────────────────────────────
+// ═════════════════════════════════════════════
+// HYMNS
+// ═════════════════════════════════════════════
 async function loadHymns(query) {
   try {
     const hymns = await window.hymnAPI.searchHymns(query, activeBookId);
@@ -73,17 +71,14 @@ async function loadHymns(query) {
     renderHymnList(hymns);
   } catch (err) {
     console.error('Failed to load hymns:', err);
-    setStatus('Error loading hymns. Check database connection.');
+    setStatus('Error loading hymns.');
   }
 }
 
-// ─────────────────────────────────────────────
-// Render Hymn List
-// ─────────────────────────────────────────────
 function renderHymnList(hymns) {
-  const list       = document.getElementById('hymnList');
-  const countBadge = document.getElementById('hymnCount');
-  countBadge.textContent = hymns.length;
+  const list  = document.getElementById('hymnList');
+  const badge = document.getElementById('hymnCount');
+  badge.textContent = hymns.length;
 
   if (!hymns.length) {
     list.innerHTML = `
@@ -106,9 +101,6 @@ function renderHymnList(hymns) {
   `).join('');
 }
 
-// ─────────────────────────────────────────────
-// Select Hymn
-// ─────────────────────────────────────────────
 async function selectHymn(index) {
   const hymn = allHymns[index];
   if (!hymn) return;
@@ -126,8 +118,6 @@ async function selectHymn(index) {
   try {
     currentBlocks = await window.hymnAPI.getHymnBlocks(hymn.id);
     renderBlockList(currentBlocks);
-
-    // Show book name in status if available
     const book = allBooks.find(b => b.id === hymn.book_id);
     const bookLabel = book ? ` · ${book.name}` : '';
     setStatus(`Hymn ${hymn.number} — ${hymn.title}${bookLabel} — ${currentBlocks.length} blocks`);
@@ -139,13 +129,9 @@ async function selectHymn(index) {
   returnFocus();
 }
 
-// ─────────────────────────────────────────────
-// Render Hymn Header
-// ─────────────────────────────────────────────
 function renderHymnHeader(hymn) {
   const book = allBooks.find(b => b.id === hymn.book_id);
-  const header = document.getElementById('selectedHymnHeader');
-  header.innerHTML = `
+  document.getElementById('selectedHymnHeader').innerHTML = `
     <div class="selected-hymn-info">
       <div class="selected-number">${book ? book.name + ' · ' : ''}No. ${hymn.number}</div>
       <div class="selected-title">${hymn.title}</div>
@@ -154,9 +140,9 @@ function renderHymnHeader(hymn) {
   `;
 }
 
-// ─────────────────────────────────────────────
-// Render Block List
-// ─────────────────────────────────────────────
+// ═════════════════════════════════════════════
+// BLOCKS
+// ═════════════════════════════════════════════
 function renderBlockList(blocks) {
   const list = document.getElementById('blockList');
   const nav  = document.getElementById('blockNav');
@@ -188,9 +174,6 @@ function formatPreview(text) {
   return lines.slice(0, 3).join('\n') + (lines.length > 3 ? '\n...' : '');
 }
 
-// ─────────────────────────────────────────────
-// Select and Project
-// ─────────────────────────────────────────────
 async function selectAndProject(index) {
   if (!currentHymn || !currentBlocks[index]) return;
 
@@ -207,9 +190,9 @@ async function selectAndProject(index) {
     await window.hymnAPI.projectBlock({
       hymnNumber: currentHymn.number,
       hymnTitle:  currentHymn.title,
-      label:  block.label,
-      type:   block.type,
-      text:   block.text,
+      label:    block.label,
+      type:     block.type,
+      text:     block.text,
       position: index + 1,
       total:    currentBlocks.length,
     });
@@ -224,9 +207,155 @@ async function selectAndProject(index) {
   returnFocus();
 }
 
-// ─────────────────────────────────────────────
-// Projection Controls
-// ─────────────────────────────────────────────
+// ═════════════════════════════════════════════
+// EDITOR AUTH
+// ═════════════════════════════════════════════
+async function handleEditorClick() {
+  if (editorUnlocked) {
+    await window.hymnAPI.openEditor();
+    return;
+  }
+  // Show password modal
+  document.getElementById('passwordOverlay').style.display = 'flex';
+  document.getElementById('passwordInput').value = '';
+  document.getElementById('passwordError').style.display = 'none';
+  document.getElementById('passwordInput').classList.remove('shake');
+  setTimeout(() => document.getElementById('passwordInput').focus(), 100);
+}
+
+function closePasswordModal() {
+  document.getElementById('passwordOverlay').style.display = 'none';
+  returnFocus();
+}
+
+async function submitPassword() {
+  const pwd = document.getElementById('passwordInput').value;
+  if (!pwd) return;
+
+  const result = await window.hymnAPI.verifyEditorPassword(pwd);
+
+  if (result.success) {
+    editorUnlocked = true;
+
+    // Update button to green unlocked state
+    const btn  = document.getElementById('btnEditor');
+    const icon = document.getElementById('editorLockIcon');
+    btn.classList.add('unlocked');
+    icon.textContent = '🔓';
+
+    closePasswordModal();
+    await window.hymnAPI.openEditor();
+  } else {
+    const input = document.getElementById('passwordInput');
+    input.classList.remove('shake');
+    void input.offsetHeight; // restart animation
+    input.classList.add('shake');
+    input.value = '';
+    document.getElementById('passwordError').style.display = 'block';
+    setTimeout(() => input.focus(), 50);
+  }
+}
+
+// Menu shortcut for editor also goes through auth
+window.hymnAPI.onMenuOpenEditor(() => handleEditorClick());
+
+// ═════════════════════════════════════════════
+// DB SYNC MODAL
+// ═════════════════════════════════════════════
+function setupSyncListeners() {
+  // Triggered by Help → Check for Database Updates
+  window.hymnAPI.onManualDbSync(async () => {
+    openSyncModal('Checking for Updates', 'Connecting to server...', '');
+    await window.hymnAPI.triggerDbSync();
+  });
+
+  window.hymnAPI.onDbSyncProgress((pct) => {
+    document.getElementById('syncProgressBar').style.display = 'block';
+    document.getElementById('syncProgressFill').style.width  = pct + '%';
+    document.getElementById('syncModalMessage').textContent  = `Downloading... ${pct}%`;
+  });
+
+  window.hymnAPI.onDbSyncDone((result) => {
+    if (result.status === 'updated') {
+      openSyncModal(
+        'Database Updated',
+        `Successfully updated to v${result.version}.\nRestart the app to load the latest hymns.`,
+        'done'
+      );
+    } else if (result.status === 'up-to-date') {
+      openSyncModal('Already Up to Date', 'Your hymn database is the latest version.', 'done');
+    } else if (result.status === 'offline') {
+      openSyncModal('No Connection', 'Could not reach the server.\nCheck your internet and try again.', 'offline');
+    } else {
+      openSyncModal('Update Failed', 'An error occurred. Please try again.', 'error');
+    }
+  });
+}
+
+function openSyncModal(title, message, state) {
+  const icon    = document.getElementById('syncModalIcon');
+  const titleEl = document.getElementById('syncModalTitle');
+  const msgEl   = document.getElementById('syncModalMessage');
+  const closeBtn = document.getElementById('syncModalClose');
+  const progressBar = document.getElementById('syncProgressBar');
+
+  const icons = { done: '✓', offline: '!', error: '✕' };
+  icon.className   = `sync-modal-icon${state ? ' ' + state : ''}`;
+  icon.textContent = icons[state] || '↓';
+  titleEl.textContent = title;
+  msgEl.textContent   = message;
+  progressBar.style.display = 'none';
+  document.getElementById('syncProgressFill').style.width = '0%';
+  closeBtn.style.display = (state === 'done' || state === 'offline' || state === 'error') ? 'flex' : 'none';
+
+  document.getElementById('syncOverlay').style.display = 'flex';
+}
+
+function closeSyncModal() {
+  document.getElementById('syncOverlay').style.display = 'none';
+  returnFocus();
+}
+
+// ═════════════════════════════════════════════
+// APP UPDATE BAR
+// ═════════════════════════════════════════════
+function setupUpdateListeners() {
+  window.hymnAPI.onUpdateAvailable((info) => {
+    const bar = document.getElementById('updateBar');
+    document.getElementById('updateMessage').textContent = `App version ${info.version} is available.`;
+    bar.style.display = 'flex';
+  });
+
+  window.hymnAPI.onUpdateProgress((pct) => {
+    const btn = document.getElementById('updateBtn');
+    btn.textContent = `Downloading... ${pct}%`;
+    btn.disabled = true;
+  });
+
+  window.hymnAPI.onUpdateDownloaded(() => {
+    document.getElementById('updateMessage').textContent = 'Update ready. Restart to install.';
+    const btn = document.getElementById('updateBtn');
+    btn.textContent = 'Restart & Install';
+    btn.disabled = false;
+    updateReady = true;
+  });
+}
+
+async function handleUpdateAction() {
+  if (updateReady) {
+    await window.hymnAPI.installUpdate();
+  } else {
+    await window.hymnAPI.downloadUpdate();
+  }
+}
+
+function dismissUpdate() {
+  document.getElementById('updateBar').style.display = 'none';
+}
+
+// ═════════════════════════════════════════════
+// PROJECTION
+// ═════════════════════════════════════════════
 async function toggleProjection() {
   const btn = document.getElementById('btnProjection');
   const currentlyProjecting = await window.hymnAPI.isProjecting();
@@ -255,18 +384,29 @@ async function blankScreen() {
   returnFocus();
 }
 
-// ─────────────────────────────────────────────
-// Font Size
-// ─────────────────────────────────────────────
+function setupProjectionListener() {
+  window.hymnAPI.onProjectionClosed(() => {
+    const btn = document.getElementById('btnProjection');
+    btn.querySelector('.btn-label').textContent = 'Open Projection';
+    btn.classList.remove('active');
+    updateProjectionIndicator(false);
+    isProjecting = false;
+    setStatus('Projection window closed.');
+  });
+}
+
+// ═════════════════════════════════════════════
+// FONT SIZE
+// ═════════════════════════════════════════════
 async function adjustFontSize(direction) {
   currentFontSize = Math.min(400, Math.max(50, currentFontSize + direction * 20));
   document.getElementById('fontSizeValue').textContent = currentFontSize + '%';
   await window.hymnAPI.setFontSize(currentFontSize);
 }
 
-// ─────────────────────────────────────────────
-// Search
-// ─────────────────────────────────────────────
+// ═════════════════════════════════════════════
+// SEARCH
+// ═════════════════════════════════════════════
 function onSearch(value) {
   const clearBtn = document.getElementById('searchClear');
   clearBtn.classList.toggle('visible', value.length > 0);
@@ -282,16 +422,32 @@ function clearSearch() {
   input.focus();
 }
 
-// ─────────────────────────────────────────────
-// Keyboard
-// ─────────────────────────────────────────────
+// ═════════════════════════════════════════════
+// KEYBOARD
+// ═════════════════════════════════════════════
 function setupKeyboard() {
   document.addEventListener('keydown', async (e) => {
     const searchInput = document.getElementById('searchInput');
+    const pwdOverlay  = document.getElementById('passwordOverlay');
+    const syncOverlay = document.getElementById('syncOverlay');
+
+    // If password modal is open
+    if (pwdOverlay.style.display !== 'none') {
+      if (e.key === 'Escape') { closePasswordModal(); }
+      return;
+    }
+
+    // If sync modal is open
+    if (syncOverlay.style.display !== 'none') {
+      if (e.key === 'Escape') { closeSyncModal(); }
+      return;
+    }
+
     if (document.activeElement === searchInput) {
       if (e.key === 'Escape') { clearSearch(); searchInput.blur(); returnFocus(); }
       return;
     }
+
     switch (e.key) {
       case 'ArrowRight': case 'ArrowDown':  e.preventDefault(); navigateBlock(1);  break;
       case 'ArrowLeft':  case 'ArrowUp':    e.preventDefault(); navigateBlock(-1); break;
@@ -318,23 +474,9 @@ function returnFocus() {
   }, 50);
 }
 
-// ─────────────────────────────────────────────
-// Projection Listener
-// ─────────────────────────────────────────────
-function setupProjectionListener() {
-  window.hymnAPI.onProjectionClosed(() => {
-    const btn = document.getElementById('btnProjection');
-    btn.querySelector('.btn-label').textContent = 'Open Projection';
-    btn.classList.remove('active');
-    updateProjectionIndicator(false);
-    isProjecting = false;
-    setStatus('Projection window closed.');
-  });
-}
-
-// ─────────────────────────────────────────────
-// UI Helpers
-// ─────────────────────────────────────────────
+// ═════════════════════════════════════════════
+// UI HELPERS
+// ═════════════════════════════════════════════
 function updateProjectionIndicator(live) {
   const indicator = document.getElementById('projectionIndicator');
   indicator.classList.toggle('live', live);
@@ -343,45 +485,4 @@ function updateProjectionIndicator(live) {
 
 function setStatus(text) {
   document.getElementById('statusText').textContent = text;
-}
-
-
-
-// ─────────────────────────────────────────────
-// Auto Update
-// ─────────────────────────────────────────────
-let updateReady = false;
-
-window.hymnAPI.onUpdateAvailable((info) => {
-  const bar = document.getElementById('updateBar');
-  const msg = document.getElementById('updateMessage');
-  msg.textContent = `Version ${info.version} is available.`;
-  bar.style.display = 'flex';
-});
-
-window.hymnAPI.onUpdateProgress((pct) => {
-  const btn = document.getElementById('updateBtn');
-  btn.textContent = `Downloading... ${pct}%`;
-  btn.disabled = true;
-});
-
-window.hymnAPI.onUpdateDownloaded(() => {
-  const btn = document.getElementById('updateBtn');
-  const msg = document.getElementById('updateMessage');
-  msg.textContent = 'Update ready. Restart to install.';
-  btn.textContent = 'Restart & Install';
-  btn.disabled = false;
-  updateReady = true;
-});
-
-async function handleUpdateAction() {
-  if (updateReady) {
-    await window.hymnAPI.installUpdate();
-  } else {
-    await window.hymnAPI.downloadUpdate();
-  }
-}
-
-function dismissUpdate() {
-  document.getElementById('updateBar').style.display = 'none';
 }
