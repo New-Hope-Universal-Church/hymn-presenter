@@ -6,46 +6,40 @@ const idleState    = document.getElementById('idleState');
 const contentState = document.getElementById('contentState');
 const blankState   = document.getElementById('blankState');
 
-const elHymnNumber  = document.getElementById('hymnNumber');
-const elHymnTitle   = document.getElementById('hymnTitle');
-const elBlockLabel  = document.getElementById('blockLabel');
-const elVerseText   = document.getElementById('verseText');
+const elHymnNumber   = document.getElementById('hymnNumber');
+const elHymnTitle    = document.getElementById('hymnTitle');
+const elBlockLabel   = document.getElementById('blockLabel');
+const elVerseText    = document.getElementById('verseText');
 const elBlockCounter = document.getElementById('blockCounter');
 
 // ─────────────────────────────────────────────
-// Display a block — NO cloning, just CSS animation restart
+// Display a block
 // ─────────────────────────────────────────────
 function displayBlock(data) {
-  // Update text content
   elHymnNumber.textContent   = `MHB ${data.hymnNumber}`;
   elHymnTitle.textContent    = data.hymnTitle;
   elBlockLabel.textContent   = data.label;
   elVerseText.textContent    = data.text;
   elBlockCounter.textContent = `${data.position} / ${data.total}`;
 
-  // Update type class for colour (verse=white, refrain=blue, chorus=purple)
   contentState.className = `content-state type-${data.type}`;
 
-  // Restart CSS animations without cloning
-  // Remove then re-add the class that triggers animation
   [elHymnNumber, elHymnTitle, elBlockLabel, elVerseText, elBlockCounter,
    contentState.querySelector('.hymn-meta')]
     .forEach(el => {
       if (!el) return;
       el.style.animation = 'none';
-      // Force reflow so the browser registers the change
       void el.offsetHeight;
       el.style.animation = '';
     });
 
-  // Show content, hide others
   idleState.style.display    = 'none';
   blankState.style.display   = 'none';
   contentState.style.display = 'flex';
 }
 
 // ─────────────────────────────────────────────
-// Blank screen
+// Blank / idle
 // ─────────────────────────────────────────────
 function blankScreen() {
   idleState.style.display    = 'none';
@@ -53,9 +47,6 @@ function blankScreen() {
   blankState.style.display   = 'flex';
 }
 
-// ─────────────────────────────────────────────
-// Show idle state
-// ─────────────────────────────────────────────
 function showIdle() {
   contentState.style.display = 'none';
   blankState.style.display   = 'none';
@@ -63,19 +54,30 @@ function showIdle() {
 }
 
 // ─────────────────────────────────────────────
-// Listen for events from main process
+// Font size
+// Operator sends a number 50–200.
+// 100 = default (matches the CSS clamp base).
+// We scale the clamp proportionally around that base.
 // ─────────────────────────────────────────────
-window.hymnAPI.onDisplayBlock((data) => {
-  displayBlock(data);
-});
+const BASE_MIN_PX = 28;
+const BASE_VW     = 4.5;
+const BASE_MAX_PX = 62;
 
-window.hymnAPI.onBlankScreen(() => {
-  blankScreen();
-});
+function applyFontSize(size) {
+  const scale  = size / 100;
+  const minPx  = (BASE_MIN_PX * scale).toFixed(0);
+  const vw     = (BASE_VW     * scale).toFixed(2);
+  const maxPx  = (BASE_MAX_PX * scale).toFixed(0);
+  elVerseText.style.fontSize = `clamp(${minPx}px, ${vw}vw, ${maxPx}px)`;
+}
 
-window.hymnAPI.onSetFontSize((size) => {
-  elVerseText.style.fontSize = size + '%';
-});
+// ─────────────────────────────────────────────
+// Event listeners
+// ─────────────────────────────────────────────
+window.hymnAPI.onDisplayBlock((data) => displayBlock(data));
+window.hymnAPI.onBlankScreen(()      => blankScreen());
+window.hymnAPI.onSetFontSize((size)  => applyFontSize(size));
 
-// Start in idle state
+// Start at default size and idle state
+applyFontSize(100);
 showIdle();

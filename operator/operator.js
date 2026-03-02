@@ -10,7 +10,7 @@ let projectedBlockIndex = -1;
 let isProjecting        = false;
 let searchTimeout       = null;
 let activeBookId        = null;
-let currentFontSize     = 200;
+let currentFontSize     = 100;
 let editorUnlocked      = false;
 let updateReady         = false;
 
@@ -399,7 +399,7 @@ function setupProjectionListener() {
 // FONT SIZE
 // ═════════════════════════════════════════════
 async function adjustFontSize(direction) {
-  currentFontSize = Math.min(400, Math.max(50, currentFontSize + direction * 20));
+  currentFontSize = Math.min(200, Math.max(50, currentFontSize + direction * 10));
   document.getElementById('fontSizeValue').textContent = currentFontSize + '%';
   await window.hymnAPI.setFontSize(currentFontSize);
 }
