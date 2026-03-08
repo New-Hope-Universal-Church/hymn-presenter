@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const path   = require('path');
 const Database        = require('./data/database');
 const { syncDatabase } = require('./data/db-sync');
+const { setupLogger, getLogPath } = require('./logger');
 
 
 let operatorWindow   = null;
@@ -116,6 +117,14 @@ function createAppMenu() {
           label: 'Check for Database Updates',
           click: () => { if (operatorWindow) operatorWindow.webContents.send('manual-db-sync'); }
         },
+        {
+          label: 'Show Log File',
+          click: () => {
+            const { shell } = require('electron');
+            const logPath = getLogPath();
+            if (logPath) shell.showItemInFolder(logPath);
+          }
+        },
         { type: 'separator' },
         {
           label: 'About NHUC Hymn Projector',
@@ -146,6 +155,7 @@ function createAppMenu() {
 // App Ready
 // ─────────────────────────────────────────────
 app.whenReady().then(async () => {
+  setupLogger();
   createAppMenu();
   db = new Database();
   await db.connect();
