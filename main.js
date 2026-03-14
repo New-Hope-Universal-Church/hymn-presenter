@@ -5,6 +5,7 @@ const path   = require('path');
 const Database        = require('./data/database');
 const { syncDatabase } = require('./data/db-sync');
 const { setupLogger, getLogPath } = require('./logger');
+const { THEMES, DEFAULT_THEME } = require('./themes');
 
 
 let operatorWindow   = null;
@@ -19,7 +20,8 @@ let db = null;
 // Default password: nhuc2024
 // ─────────────────────────────────────────────
 const EDITOR_PASSWORD_HASH = 'fa970510078cb0cf57571eb735d0cd23319f49357cdf844a1343edcf89e027ad';
-let editorUnlocked = false;
+let editorUnlocked  = false;
+let activeTheme     = DEFAULT_THEME;
 
 // ─────────────────────────────────────────────
 // Operator Window
@@ -67,6 +69,11 @@ function createProjectionWindow() {
     },
   });
   projectionWindow.loadFile('projection/projection.html');
+  projectionWindow.webContents.once('did-finish-load', () => {
+    if (THEMES[activeTheme]) {
+      projectionWindow.webContents.send('apply-theme', THEMES[activeTheme]);
+    }
+  });
   projectionWindow.on('closed', () => {
     projectionWindow = null;
     if (operatorWindow) operatorWindow.webContents.send('projection-closed');
@@ -117,6 +124,31 @@ function createAppMenu() {
           label: 'Check for Database Updates',
           click: () => { if (operatorWindow) operatorWindow.webContents.send('manual-db-sync'); }
         },
+        { type: 'separator' },
+        {
+          label: 'Projection Theme',
+          submenu: Object.entries(THEMES).map(([id, t]) => ({
+            label: t.label,
+            type:  'radio',
+            checked: id === activeTheme,
+            click: () => {
+              // Update all radio items
+              activeTheme = id;
+              if (projectionWindow) {
+                projectionWindow.webContents.send('apply-theme', THEMES[id]);
+              }
+              const fs   = require('fs');
+              const path = require('path');
+              const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+              try {
+                const existing = fs.existsSync(settingsPath)
+                  ? JSON.parse(fs.readFileSync(settingsPath, 'utf8')) : {};
+                existing.theme = id;
+                fs.writeFileSync(settingsPath, JSON.stringify(existing, null, 2), 'utf8');
+              } catch (err) { console.error('Failed to save theme:', err.message); }
+            }
+          }))
+        },
         {
           label: 'Show Log File',
           click: () => {
@@ -137,7 +169,8 @@ function createAppMenu() {
                 `Version: ${app.getVersion()}`,
                 `Built for New Hope Universal Church, Ghana`,
                 ``,
-                `Developer: Aaron Katey Kudadjie`,
+                `Developer: Aaron Kudadjie`,
+                `Email: akkudadjie@gmail.com`,
                 `Github: https://www.github.com/Adehwam21`,
                 ``,
                 `© ${new Date().getFullYear()} NHUC. All rights reserved.`
@@ -156,6 +189,17 @@ function createAppMenu() {
 // ─────────────────────────────────────────────
 app.whenReady().then(async () => {
   setupLogger();
+  (function loadPersistedTheme() {
+    const fs   = require('fs');
+    const path = require('path');
+    try {
+      const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+      if (fs.existsSync(settingsPath)) {
+        const s = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+        if (s.theme && THEMES[s.theme]) activeTheme = s.theme;
+      }
+    } catch { /* use default */ }
+  })();
   createAppMenu();
   db = new Database();
   await db.connect();
@@ -199,6 +243,35 @@ ipcMain.handle('trigger-db-sync', async () => {
   const result = await syncDatabase(db);
   if (operatorWindow) operatorWindow.webContents.send('db-sync-done', result);
   return result;
+});
+
+// ─────────────────────────────────────────────
+// IPC — Themes
+// ─────────────────────────────────────────────
+ipcMain.handle('get-themes', () => {
+  return Object.entries(THEMES).map(([id, t]) => ({
+    id, label: t.label, description: t.description, season: t.season
+  }));
+});
+
+ipcMain.handle('get-active-theme', () => activeTheme);
+
+ipcMain.handle('set-theme', (event, themeId) => {
+  if (!THEMES[themeId]) return false;
+  activeTheme = themeId;
+  if (projectionWindow) {
+    projectionWindow.webContents.send('apply-theme', THEMES[themeId]);
+  }
+  const fs   = require('fs');
+  const path = require('path');
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  try {
+    const existing = fs.existsSync(settingsPath)
+      ? JSON.parse(fs.readFileSync(settingsPath, 'utf8')) : {};
+    existing.theme = themeId;
+    fs.writeFileSync(settingsPath, JSON.stringify(existing, null, 2), 'utf8');
+  } catch (err) { console.error('Failed to save theme:', err.message); }
+  return true;
 });
 
 // ─────────────────────────────────────────────
