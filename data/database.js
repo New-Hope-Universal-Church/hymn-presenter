@@ -77,6 +77,7 @@ class LocalCache {
     const dbPath = getCachedDbPath();
     if (fs.existsSync(dbPath)) {
       this.db = new SQL.Database(fs.readFileSync(dbPath));
+      this._migrate();
     } else {
       this.db = new SQL.Database();
       this._createTables();
@@ -85,9 +86,21 @@ class LocalCache {
   }
 
   _createTables() {
-    this.db.run(`CREATE TABLE IF NOT EXISTS books (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE)`);
+    this.db.run(`CREATE TABLE IF NOT EXISTS books (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, alias TEXT)`);
     this.db.run(`CREATE TABLE IF NOT EXISTS hymns (id INTEGER PRIMARY KEY, number INTEGER, title TEXT, author TEXT, book_id INTEGER)`);
     this.db.run(`CREATE TABLE IF NOT EXISTS hymn_blocks (id INTEGER PRIMARY KEY, hymn_id INTEGER, position INTEGER, type TEXT, label TEXT, text TEXT)`);
+  }
+
+  // Migrate an existing cache to the current schema. Safe to re-run —
+  // each step is idempotent and failures (e.g. column already exists)
+  // are swallowed.
+  _migrate() {
+    const cols = this.db.exec(`PRAGMA table_info(books)`);
+    const names = cols.length ? cols[0].values.map(r => r[1]) : [];
+    if (!names.includes('alias')) {
+      this.db.run(`ALTER TABLE books ADD COLUMN alias TEXT`);
+      this._save();
+    }
   }
 
   _save() {
@@ -129,7 +142,7 @@ class LocalCache {
     this._createTables(); // CREATE TABLE IF NOT EXISTS — safe to re-run
 
     for (const b of books) {
-      this.db.run(`INSERT OR REPLACE INTO books (id, name) VALUES (?, ?)`, [b.id, b.name]);
+      this.db.run(`INSERT OR REPLACE INTO books (id, name, alias) VALUES (?, ?, ?)`, [b.id, b.name, b.alias || null]);
     }
     for (const h of hymns) {
       this.db.run(
@@ -157,7 +170,7 @@ class LocalCache {
     this._createTables();
 
     for (const b of books) {
-      this.db.run(`INSERT OR REPLACE INTO books (id, name) VALUES (?, ?)`, [b.id, b.name]);
+      this.db.run(`INSERT OR REPLACE INTO books (id, name, alias) VALUES (?, ?, ?)`, [b.id, b.name, b.alias || null]);
     }
     for (const h of hymns) {
       this.db.run(
@@ -176,8 +189,8 @@ class LocalCache {
     console.log(`Cache rebuilt: ${books.length} books, ${hymns.length} hymns, ${blocks.length} blocks`);
   }
 
-  updateBook(id, name) {
-    this.db.run(`INSERT OR REPLACE INTO books (id, name) VALUES (?, ?)`, [id, name]);
+  updateBook(id, name, alias = null) {
+    this.db.run(`INSERT OR REPLACE INTO books (id, name, alias) VALUES (?, ?, ?)`, [id, name, alias || null]);
     this._save();
   }
 
@@ -300,7 +313,7 @@ class Database {
 
   // ── Books ──────────────────────────────────────────────
   getAllBooks() {
-    return this.cache.query(`SELECT id, name FROM books ORDER BY name ASC`);
+    return this.cache.query(`SELECT id, name, alias FROM books ORDER BY name ASC`);
   }
 
   async addBook(name, alias) {
