@@ -105,9 +105,53 @@ class LocalCache {
     });
   }
 
-  // Rebuild cache from Supabase data
+  // Merge Supabase data into the local cache (upsert).
+  //
+  // Previously this function dropped and recreated the SQL.js DB from
+  // scratch. That created a race: if the user created a book or hymn
+  // while the background sync was in flight, the snapshot fetched from
+  // Supabase was already stale, and rebuilding from it wiped the new
+  // row from the local cache. The user would then see their freshly
+  // created book with no way to add hymns to it (dropdown had the book,
+  // but queries against book_id returned nothing because the cache no
+  // longer contained it).
+  //
+  // Instead we INSERT OR REPLACE each fetched row. Rows that the user
+  // created locally during sync stay intact. Deletions from other
+  // clients won't be mirrored here automatically — run a manual
+  // "Check for Database Updates" (which calls rebuildFull) to force
+  // a full refresh.
   async rebuild(books, hymns, blocks) {
-    this.db = (await initSqlJs()).constructor ? new (await initSqlJs()).Database() : this.db;
+    if (!this.db) {
+      const SQL = await initSqlJs();
+      this.db   = new SQL.Database();
+    }
+    this._createTables(); // CREATE TABLE IF NOT EXISTS — safe to re-run
+
+    for (const b of books) {
+      this.db.run(`INSERT OR REPLACE INTO books (id, name) VALUES (?, ?)`, [b.id, b.name]);
+    }
+    for (const h of hymns) {
+      this.db.run(
+        `INSERT OR REPLACE INTO hymns (id, number, title, author, book_id) VALUES (?,?,?,?,?)`,
+        [h.id, h.number, h.title, h.author || null, h.book_id]
+      );
+    }
+    for (const bl of blocks) {
+      this.db.run(
+        `INSERT OR REPLACE INTO hymn_blocks (id, hymn_id, position, type, label, text) VALUES (?,?,?,?,?,?)`,
+        [bl.id, bl.hymn_id, bl.position, bl.type, bl.label, bl.text]
+      );
+    }
+
+    this._save();
+    console.log(`Cache merged: ${books.length} books, ${hymns.length} hymns, ${blocks.length} blocks`);
+  }
+
+  // Full rebuild — drops the DB and repopulates from the snapshot.
+  // Only call this from a manual sync, when the user has explicitly
+  // asked for a refresh and concurrent writes are not a concern.
+  async rebuildFull(books, hymns, blocks) {
     const SQL = await initSqlJs();
     this.db   = new SQL.Database();
     this._createTables();
@@ -207,6 +251,8 @@ class Database {
     return rows;
   }
 
+  // Background sync — merges Supabase into local cache without dropping it.
+  // Safe to run concurrently with user writes (they will be preserved).
   async _syncFromCloud() {
     console.log('Syncing from Supabase...');
     const [books, hymns, blocks] = await Promise.all([
@@ -217,6 +263,21 @@ class Database {
     await this.cache.rebuild(books, hymns, blocks);
     this.online = true;
     console.log(`Synced from Supabase: ${books.length} books, ${hymns.length} hymns, ${blocks.length} blocks`);
+  }
+
+  // Manual sync — full rebuild of the local cache. Drops and repopulates
+  // from the Supabase snapshot. Triggered from Help → Check for Database
+  // Updates. Use this when the user wants an authoritative refresh.
+  async _syncFromCloudFull() {
+    console.log('Full sync from Supabase...');
+    const [books, hymns, blocks] = await Promise.all([
+      this._fetchAll('books'),
+      this._fetchAll('hymns', '?select=id,number,title,author,book_id'),
+      this._fetchAll('hymn_blocks'),
+    ]);
+    await this.cache.rebuildFull(books, hymns, blocks);
+    this.online = true;
+    console.log(`Full sync done: ${books.length} books, ${hymns.length} hymns, ${blocks.length} blocks`);
   }
 
   // ── Books ──────────────────────────────────────────────

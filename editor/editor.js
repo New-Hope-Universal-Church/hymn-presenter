@@ -96,11 +96,14 @@ async function saveNewBook() {
   if (!name) { alert('Please enter a book name.'); return; }
 
   const book = await window.hymnAPI.addBook(name);
-  if (!book) { alert('A book with that name may already exist.'); return; }
+  if (!book || !book.id) {
+    alert('Could not add book. It may already exist, or the server is unreachable.');
+    return;
+  }
 
   cancelAddBook();
   await loadBooks();
-  selectBook(book.id);
+  await selectBook(book.id);
   showSaveStatus('✓ Book added');
 }
 
@@ -176,7 +179,7 @@ async function selectHymn(index) {
 }
 
 // ── Add Hymn ──
-function openAddHymn() {
+async function openAddHymn() {
   if (!activeBookId) { alert('Please select a hymn book first.'); return; }
   cancelEdit(); cancelAdd(); cancelEditHymn();
 
@@ -185,6 +188,13 @@ function openAddHymn() {
   document.getElementById('addHymnNumber').value = '';
   document.getElementById('addHymnTitle').value  = '';
   document.getElementById('addHymnAuthor').value = '';
+
+  // Make sure the active book is present in the dropdown. If allBooks
+  // is stale (e.g. a background sync wiped it between the book being
+  // created and this form opening), refresh it before populating.
+  if (!allBooks.some(b => b.id === activeBookId)) {
+    await loadBooks();
+  }
 
   // Pre-select active book
   const sel = document.getElementById('addHymnBook');
@@ -207,8 +217,17 @@ async function saveNewHymn() {
 
   if (!number) { alert('Please enter a hymn number.'); return; }
   if (!title)  { alert('Please enter a hymn title.');  return; }
+  if (!bookId || Number.isNaN(bookId)) {
+    alert('Please choose a hymn book. If the book you just created is missing, close and reopen the editor.');
+    return;
+  }
 
   const hymn = await window.hymnAPI.addHymn({ number, title, author, bookId });
+  if (!hymn || !hymn.id) {
+    alert('Could not add hymn. Check your internet connection and try again.');
+    return;
+  }
+
   cancelAddHymn();
   await loadHymns('');
 
