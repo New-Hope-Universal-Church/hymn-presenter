@@ -161,6 +161,7 @@ Local SQLite cache (AppData) ← used during service
 books (
   id    bigint primary key,
   name  text not null unique
+  alias text 
 )
 
 hymns (
