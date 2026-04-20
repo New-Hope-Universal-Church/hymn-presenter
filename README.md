@@ -79,8 +79,8 @@ Go to **Help → Check for Database Updates** to manually pull the latest hymns 
 ### Clone and Install
 
 ```bash
-git clone https://github.com/Adehwam21/nhuc-hymns-projector.git
-cd nhuc-hymns-projector
+git clone https://github.com/New-Hope-Universal-Church/hymn-presenter.git
+cd hymn-presenter
 npm install
 ```
 
