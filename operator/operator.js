@@ -186,8 +186,11 @@ async function selectAndProject(index) {
   const el = document.querySelector(`.block-item[data-index="${index}"]`);
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
+  const book = allBooks.find(b => b.id === currentHymn.book_id);
+
   try {
     await window.hymnAPI.projectBlock({
+      hymnAlias:  book ? book.alias : '',
       hymnNumber: currentHymn.number,
       hymnTitle:  currentHymn.title,
       label:    block.label,

@@ -17,7 +17,7 @@ const elBlockCounter = document.getElementById('blockCounter');
 // Display a block
 // ─────────────────────────────────────────────
 function displayBlock(data) {
-  elHymnNumber.textContent   = `${data.hymnAlias} ${data.hymnNumber}`;
+  elHymnNumber.textContent   = `${data.hymnAlias || ''} ${data.hymnNumber}`.trim();
   elHymnTitle.textContent    = data.hymnTitle;
   elBlockLabel.textContent   = data.label;
   elVerseText.textContent    = data.text;
