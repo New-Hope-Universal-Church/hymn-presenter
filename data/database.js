@@ -280,14 +280,34 @@ class Database {
     console.log(`Full sync done: ${books.length} books, ${hymns.length} hymns, ${blocks.length} blocks`);
   }
 
+  // ── ID allocation ──────────────────────────────────────
+  //
+  // The Supabase schema uses `bigint primary key` without an identity
+  // or default sequence, so the server cannot assign a fresh id on
+  // INSERT. Even when a sequence is present it can drift out of sync
+  // after a bulk CSV import (sequence stays at 1 while rows occupy
+  // 1..N), causing 23505 duplicate-key errors on the next insert.
+  //
+  // To sidestep this we allocate the id on the client from MAX(id)+1
+  // of the local cache. The cache mirrors Supabase (modulo in-flight
+  // edits from other clients), so this is safe for a single-operator
+  // setup. If two operators insert at the same instant they'd collide;
+  // acceptable for this app.
+  _nextId(table) {
+    const row = this.cache.query(`SELECT COALESCE(MAX(id), 0) AS m FROM ${table}`)[0];
+    return (row ? row.m : 0) + 1;
+  }
+
   // ── Books ──────────────────────────────────────────────
   getAllBooks() {
     return this.cache.query(`SELECT id, name FROM books ORDER BY name ASC`);
   }
 
   async addBook(name) {
-    const rows = await sb.post('books', { name });
+    const id   = this._nextId('books');
+    const rows = await sb.post('books', { id, name });
     const book = Array.isArray(rows) ? rows[0] : rows;
+    if (!book || !book.id) throw new Error('Supabase did not return the inserted book.');
     this.cache.updateBook(book.id, book.name);
     return book;
   }
@@ -332,8 +352,10 @@ class Database {
   }
 
   async addHymn({ number, title, author, bookId }) {
-    const rows = await sb.post('hymns', { number, title, author: author || null, book_id: bookId });
+    const id   = this._nextId('hymns');
+    const rows = await sb.post('hymns', { id, number, title, author: author || null, book_id: bookId });
     const hymn = Array.isArray(rows) ? rows[0] : rows;
+    if (!hymn || !hymn.id) throw new Error('Supabase did not return the inserted hymn.');
     this.cache.updateHymn(hymn);
     return hymn;
   }
@@ -362,8 +384,10 @@ class Database {
   }
 
   async addBlock({ hymnId, type, label, text, position }) {
-    const rows  = await sb.post('hymn_blocks', { hymn_id: hymnId, type, label, text, position });
+    const id    = this._nextId('hymn_blocks');
+    const rows  = await sb.post('hymn_blocks', { id, hymn_id: hymnId, type, label, text, position });
     const block = Array.isArray(rows) ? rows[0] : rows;
+    if (!block || !block.id) throw new Error('Supabase did not return the inserted block.');
     this.cache.updateBlock(block);
     return block;
   }
