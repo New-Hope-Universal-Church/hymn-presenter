@@ -10,7 +10,6 @@ const { THEMES, DEFAULT_THEME } = require('./themes');
 
 let operatorWindow   = null;
 let projectionWindow = null;
-let editorWindow     = null;
 let db = null;
 
 // ─────────────────────────────────────────────
@@ -82,25 +81,6 @@ function createProjectionWindow() {
 }
 
 // ─────────────────────────────────────────────
-// Editor Window
-// ─────────────────────────────────────────────
-function createEditorWindow() {
-  if (editorWindow) { editorWindow.focus(); return; }
-  editorWindow = new BrowserWindow({
-    width: 1200, height: 750, minWidth: 1000, minHeight: 600,
-    title: 'Hymn Editor — NHUC',
-    backgroundColor: '#0f0f17',
-    icon: path.join(__dirname, 'assets/icons', 'logo-sharpened.ico'),
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true, nodeIntegration: false,
-    },
-  });
-  editorWindow.loadFile('editor/editor.html');
-  editorWindow.on('closed', () => { editorWindow = null; });
-}
-
-// ─────────────────────────────────────────────
 // App Menu
 // ─────────────────────────────────────────────
 function createAppMenu() {
@@ -111,7 +91,14 @@ function createAppMenu() {
         {
           label: 'Hymn Editor',
           accelerator: 'CmdOrCtrl+E',
-          click: () => { if (operatorWindow) operatorWindow.webContents.send('menu-open-editor'); }
+          click: () => {
+            if (!operatorWindow) return;
+            if (editorUnlocked) {
+              operatorWindow.loadFile('editor/editor.html');
+            } else {
+              operatorWindow.webContents.send('menu-open-editor');
+            }
+          }
         },
         { type: 'separator' },
         { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }
@@ -244,8 +231,13 @@ ipcMain.handle('is-editor-unlocked', () => editorUnlocked);
 
 ipcMain.handle('open-editor', () => {
   if (!editorUnlocked) return { locked: true };
-  createEditorWindow();
+  if (operatorWindow) operatorWindow.loadFile('editor/editor.html');
   return { locked: false };
+});
+
+ipcMain.handle('close-editor', () => {
+  if (operatorWindow) operatorWindow.loadFile('operator/index.html');
+  return true;
 });
 
 // ─────────────────────────────────────────────

@@ -157,17 +157,19 @@ function renderBlockList(blocks) {
     return;
   }
 
+
   list.innerHTML = blocks.map((block, i) => `
     <li class="block-item type-${block.type}
                ${i === selectedBlockIndex  ? 'active'    : ''}
                ${i === projectedBlockIndex ? 'projected' : ''}"
         onclick="selectAndProject(${i})" data-index="${i}">
       <div class="block-label">${block.label}</div>
-      <div class="block-preview">${formatPreview(block.text)}</div>
+      <div class="block-preview">${block.text}</div> 
       <span class="projected-badge">● LIVE</span>
     </li>
   `).join('');
 }
+
 
 function formatPreview(text) {
   const lines = text.split('\n').filter(l => l.trim());

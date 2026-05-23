@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('hymnAPI', {
   verifyEditorPassword: (pwd) => ipcRenderer.invoke('verify-editor-password', pwd),
   isEditorUnlocked:     ()    => ipcRenderer.invoke('is-editor-unlocked'),
   openEditor:           ()    => ipcRenderer.invoke('open-editor'),
+  closeEditor:          ()    => ipcRenderer.invoke('close-editor'),
 
   // ── DB Sync ────────────────────────────────────────────
   triggerDbSync:    ()    => ipcRenderer.invoke('trigger-db-sync'),
