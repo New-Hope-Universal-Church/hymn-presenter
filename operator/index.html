@@ -33,10 +33,11 @@
         <button class="btn-font" onclick="adjustFontSize(1)">A+</button>
       </div>
 
-      <!-- Editor button — shows lock/unlock state -->
-      <button class="btn btn-editor" id="btnEditor" onclick="handleEditorClick()">
-        <span class="editor-lock-icon" id="editorLockIcon">🔒</span>
-        <span class="btn-label">Hymn Editor</span>
+      <!-- Opens the lyrics API's import page in the browser -->
+      <button class="btn btn-editor" id="btnEditor" onclick="openImportPage()"
+        title="Opens the hymn import page in your web browser">
+        <span class="editor-lock-icon">↗</span>
+        <span class="btn-label">Import Hymns</span>
       </button>
 
       <div class="header-divider"></div>
@@ -102,24 +103,6 @@
       </div>
     </div>
   </footer>
-
-  <!-- ── Password Modal ── -->
-  <div class="modal-overlay" id="passwordOverlay" style="display:none;">
-    <div class="password-modal">
-      <div class="password-modal-icon">🔒</div>
-      <div class="password-modal-title">Editor Access</div>
-      <div class="password-modal-subtitle">Enter the password to unlock the hymn editor</div>
-      <input type="password" id="passwordInput" class="password-input" placeholder="Password"
-        onkeydown="if(event.key==='Enter') submitPassword()" autocomplete="off" />
-      <div class="password-error" id="passwordError" style="display:none;">
-        Incorrect password. Please try again.
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closePasswordModal()">Cancel</button>
-        <button class="btn btn-save" onclick="submitPassword()">Unlock</button>
-      </div>
-    </div>
-  </div>
 
   <!-- ── DB Sync Modal ── -->
   <div class="modal-overlay" id="syncOverlay" style="display:none;">

@@ -4,21 +4,12 @@ contextBridge.exposeInMainWorld('hymnAPI', {
 
   // ── Books ──────────────────────────────────────────────
   getBooks:   ()     => ipcRenderer.invoke('get-books'),
-  addBook:    (name,alias) => ipcRenderer.invoke('add-book', name, alias),
-  deleteBook: (id)   => ipcRenderer.invoke('delete-book', id),
 
   // ── Hymns ──────────────────────────────────────────────
   searchHymns:  (query, bookId) => ipcRenderer.invoke('search-hymns', { query, bookId }),
-  addHymn:      (data)          => ipcRenderer.invoke('add-hymn', data),
-  updateHymn:   (data)          => ipcRenderer.invoke('update-hymn', data),
-  deleteHymn:   (id)            => ipcRenderer.invoke('delete-hymn', id),
 
   // ── Blocks ─────────────────────────────────────────────
   getHymnBlocks: (hymnId) => ipcRenderer.invoke('get-hymn-blocks', hymnId),
-  updateBlock:   (data)   => ipcRenderer.invoke('update-block', data),
-  deleteBlock:   (id)     => ipcRenderer.invoke('delete-block', id),
-  addBlock:      (data)   => ipcRenderer.invoke('add-block', data),
-  reorderBlocks: (data)   => ipcRenderer.invoke('reorder-blocks', data),
 
   // ── Projection ─────────────────────────────────────────
   openProjection:  ()     => ipcRenderer.invoke('open-projection'),
@@ -32,10 +23,8 @@ contextBridge.exposeInMainWorld('hymnAPI', {
   exportCsv:    ()               => ipcRenderer.invoke('export-csv'),
   saveCsvFile:  (data)           => ipcRenderer.invoke('save-csv-file', data),
 
-  // ── Editor Auth ────────────────────────────────────────
-  verifyEditorPassword: (pwd) => ipcRenderer.invoke('verify-editor-password', pwd),
-  isEditorUnlocked:     ()    => ipcRenderer.invoke('is-editor-unlocked'),
-  openEditor:           ()    => ipcRenderer.invoke('open-editor'),
+  // ── Hymn import page (opens in the browser) ────────────
+  openImportPage: () => ipcRenderer.invoke('open-import-page'),
 
   // ── DB Sync ────────────────────────────────────────────
   triggerDbSync:    ()    => ipcRenderer.invoke('trigger-db-sync'),
@@ -49,7 +38,6 @@ contextBridge.exposeInMainWorld('hymnAPI', {
   onDisplayBlock:     (cb) => ipcRenderer.on('display-block', (e, data) => cb(data)),
   onBlankScreen:      (cb) => ipcRenderer.on('blank-screen', cb),
   onSetFontSize:      (cb) => ipcRenderer.on('set-font-size', (e, size) => cb(size)),
-  onMenuOpenEditor:   (cb) => ipcRenderer.on('menu-open-editor', cb),
   onManualDbSync:     (cb) => ipcRenderer.on('manual-db-sync', cb),
   onDbSyncProgress:   (cb) => ipcRenderer.on('db-sync-progress', (e, pct) => cb(pct)),
   onDbSyncDone:       (cb) => ipcRenderer.on('db-sync-done', (e, result) => cb(result)),

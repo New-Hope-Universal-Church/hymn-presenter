@@ -111,7 +111,7 @@ html, body {
 }
 .btn-font:hover { color: var(--accent); background: var(--accent-glow); }
 
-/* ── Editor Button ───────────────────────────────────── */
+/* ── Import Hymns Button ─────────────────────────────── */
 .btn-editor {
   border-color: var(--refrain-soft);
   color: var(--refrain);
@@ -120,12 +120,6 @@ html, body {
 .btn-editor:hover {
   background: #6eb5ff33; border-color: var(--refrain);
   box-shadow: 0 0 12px #6eb5ff33; color: var(--refrain);
-}
-.btn-editor.unlocked {
-  border-color: #4ade8044; color: #4ade80; background: #4ade8011;
-}
-.btn-editor.unlocked:hover {
-  background: #4ade8022; border-color: #4ade80; box-shadow: 0 0 12px #4ade8022;
 }
 .editor-lock-icon { font-size: 13px; line-height: 1; }
 
@@ -337,7 +331,7 @@ html, body {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 .hymn-item, .block-item { animation: fadeIn 150ms ease both; }
 
-/* ── Modal Overlay (shared by password + sync modals) ── */
+/* ── Modal Overlay ───────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, 0.65);
@@ -346,37 +340,7 @@ html, body {
   animation: fadeIn 200ms ease both;
 }
 
-/* ── Password Modal ──────────────────────────────────── */
-.password-modal {
-  background: var(--bg-panel); border: 1px solid var(--border-light);
-  border-radius: var(--radius); padding: 36px 40px; min-width: 320px;
-  text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-}
-.password-modal-icon { font-size: 32px; margin-bottom: 4px; }
-.password-modal-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--text-primary); }
-.password-modal-subtitle { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
-
-.password-input {
-  width: 100%; background: var(--bg-card); border: 1px solid var(--border-light);
-  border-radius: var(--radius); padding: 10px 14px;
-  color: var(--text-primary); font-family: var(--font-ui); font-size: 14px;
-  outline: none; text-align: center; letter-spacing: 3px; transition: all var(--transition);
-}
-.password-input:focus { border-color: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-glow); }
-.password-input.shake { animation: shake 400ms ease; border-color: #ff6b6b; box-shadow: 0 0 0 3px #ff6b6b22; }
-
-.password-error { font-size: 11px; color: #ff6b6b; margin-top: -4px; }
-
 .modal-actions { display: flex; gap: 10px; margin-top: 4px; width: 100%; justify-content: center; }
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%       { transform: translateX(-8px); }
-  40%       { transform: translateX(8px); }
-  60%       { transform: translateX(-6px); }
-  80%       { transform: translateX(6px); }
-}
 
 /* ── DB Sync Modal ───────────────────────────────────── */
 .sync-modal {
