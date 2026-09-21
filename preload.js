@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld('hymnAPI', {
   onBlankScreen:      (cb) => ipcRenderer.on('blank-screen', cb),
   onSetFontSize:      (cb) => ipcRenderer.on('set-font-size', (e, size) => cb(size)),
   onManualDbSync:     (cb) => ipcRenderer.on('manual-db-sync', cb),
+  onHymnsUpdated:     (cb) => ipcRenderer.on('hymns-updated', (e, info) => cb(info)),
   onDbSyncProgress:   (cb) => ipcRenderer.on('db-sync-progress', (e, pct) => cb(pct)),
   onDbSyncDone:       (cb) => ipcRenderer.on('db-sync-done', (e, result) => cb(result)),
   onUpdateAvailable:  (cb) => ipcRenderer.on('update-available', (e, info) => cb(info)),

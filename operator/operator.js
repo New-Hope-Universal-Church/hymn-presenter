@@ -17,6 +17,8 @@ let updateReady         = false;
 // Init
 // ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // Registered first, so a sync that finishes while the lists are loading is not missed.
+  window.hymnAPI.onHymnsUpdated(() => refreshLists());
   await loadBooks();
   await loadHymns('');
   setupKeyboard();
@@ -30,6 +32,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ═════════════════════════════════════════════
 // BOOKS
 // ═════════════════════════════════════════════
+// Reload the book filter and the hymn list, for example after new hymns were synced.
+async function refreshLists() {
+  await loadBooks();
+  await loadHymns(document.getElementById('searchInput').value);
+}
+
 async function loadBooks() {
   allBooks = await window.hymnAPI.getBooks();
   renderBookFilter();
@@ -237,9 +245,10 @@ function setupSyncListeners() {
 
   window.hymnAPI.onDbSyncDone((result) => {
     if (result.status === 'updated') {
+      refreshLists();
       openSyncModal(
         'Database Updated',
-        `Successfully updated to v${result.version}.\nRestart the app to load the latest hymns.`,
+        `Successfully updated to version ${result.version}.\nThe hymn list has been refreshed.`,
         'done'
       );
     } else if (result.status === 'up-to-date') {

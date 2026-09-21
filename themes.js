@@ -1,5 +1,5 @@
 /**
- * NHUC Hymn Projector — Theme Definitions
+ * HopeSongs — Theme Definitions
  *
  * Each theme defines CSS variable overrides applied to the projection screen.
  * To add a new theme, add an entry to THEMES and it will automatically appear

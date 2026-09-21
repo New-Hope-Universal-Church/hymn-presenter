@@ -1,4 +1,4 @@
-# NHUC Hymn Projector
+# HopeSongs
 
 A dual-monitor hymn projection desktop app built for **New Hope Universal Church (NHUC)**. The operator controls which verse is displayed from their laptop, while the congregation sees a clean fullscreen display on the projector.
 
@@ -25,9 +25,9 @@ A dual-monitor hymn projection desktop app built for **New Hope Universal Church
 ## For Church Staff — Installing the App
 
 1. Go to the [Releases page](../../releases) of this repository
-2. Download the latest **NHUC Hymn Projector Setup x.x.x.exe** file
+2. Download the latest **HopeSongs Setup x.x.x.exe** file
 3. Run the installer and follow the prompts
-4. Launch **NHUC Hymn Projector** from your desktop or Start Menu
+4. Launch **HopeSongs** from your desktop or Start Menu
 
 > **Tip:** Connect your projector before opening the app. It will automatically detect the second screen and open the projection window on it.
 
@@ -207,7 +207,7 @@ Output in `dist/`:
 
 ```
 dist/
-├── NHUC Hymn Projector Setup 1.1.0.exe
+├── HopeSongs Setup 1.1.0.exe
 └── latest.yml
 ```
 
@@ -226,7 +226,7 @@ git push
 2. Go to GitHub → **Releases** → **Draft a new release**
 3. Set the tag to `v1.1.0` (the `v` prefix is required)
 4. Upload both files from `dist/`:
-   - `NHUC Hymn Projector Setup 1.1.0.exe`
+   - `HopeSongs Setup 1.1.0.exe`
    - `latest.yml` ← required for auto-updates
 5. Click **Publish release**
 

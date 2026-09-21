@@ -19,7 +19,7 @@ function setupLogger() {
   rotateLogs(logDir);
 
   // Write session header
-  write('INFO', `═══ NHUC Hymn Projector v${app.getVersion()} ═══`);
+  write('INFO', `═══ HopeSongs v${app.getVersion()} ═══`);
   write('INFO', `Session started: ${new Date().toLocaleString()}`);
   write('INFO', `Log file: ${logPath}`);
 

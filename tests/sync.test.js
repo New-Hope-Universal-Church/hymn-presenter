@@ -160,6 +160,34 @@ test('a snapshot that fails halfway does not replace the working cache', async (
   assert.equal(reopened.cache.getVersion(), 1);
 });
 
+test('connect() opens the cache at once and reports the background sync when it finishes', async (t) => {
+  const { db, state } = await setup(t);
+
+  await db.connect();
+  const result = await db.syncing;
+
+  assert.deepEqual(result, { changed: true, version: 1 });
+  assert.equal(db.getAllHymns(BOOK).length, 2);
+
+  // Next start: the cache already holds this version, so nothing is reported as changed.
+  const nextStart = new Database();
+  await nextStart.connect();
+  assert.deepEqual(await nextStart.syncing, { changed: false, version: 1 });
+  assert.equal(state.seen[1].etag, '"1"');
+});
+
+test('connect() resolves the sync to null when offline and keeps the cache', async (t) => {
+  const { db } = await setup(t);
+  await db._syncFromCloud();
+
+  process.env.LYRICS_API_URL = 'http://127.0.0.1:1';
+  const nextStart = new Database();
+  await nextStart.connect();
+
+  assert.equal(await nextStart.syncing, null);
+  assert.equal(nextStart.getAllHymns(BOOK).length, 2);
+});
+
 test('an app with no API settings fails clearly', async (t) => {
   const { db } = await setup(t);
   delete process.env.LYRICS_API_URL;

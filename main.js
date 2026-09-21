@@ -20,7 +20,7 @@ let activeTheme     = DEFAULT_THEME;
 function createOperatorWindow() {
   operatorWindow = new BrowserWindow({
     width: 1200, height: 750, minWidth: 900, minHeight: 600,
-    title: 'NHUC Hymn Projector',
+    title: 'HopeSongs',
     backgroundColor: '#0f0f17',
     icon: path.join(__dirname, 'assets/icons', 'logo-sharpened.ico'),
     webPreferences: {
@@ -52,7 +52,7 @@ function createProjectionWindow() {
     frame: displays.length === 1,
     alwaysOnTop: displays.length > 1,
     backgroundColor: '#000000',
-    title: 'NHUC — Projection',
+    title: 'HopeSongs — Projection',
     icon: path.join(__dirname, 'assets/icons', 'logo-sharpened.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -143,12 +143,12 @@ function createAppMenu() {
         },
         { type: 'separator' },
         {
-          label: 'About NHUC Hymn Projector',
+          label: 'About HopeSongs',
           click: () => {
             dialog.showMessageBox({
               type: 'info',
-              title: 'About NHUC Hymn Projector',
-              message: 'NHUC Hymn Projector',
+              title: 'About HopeSongs',
+              message: 'HopeSongs',
               detail: [
                 `Version: ${app.getVersion()}`,
                 `Built for New Hope Universal Church, Ghana`,
@@ -188,6 +188,15 @@ app.whenReady().then(async () => {
   db = new Database();
   await db.connect();
   createOperatorWindow();
+
+  // The window shows the cache straight away. When the background sync brings in
+  // new hymns, tell the window to reload its lists. On a fresh install the cache
+  // starts empty, so without this the list would stay empty until a restart.
+  db.syncing.then((result) => {
+    if (result && result.changed && operatorWindow) {
+      operatorWindow.webContents.send('hymns-updated', result);
+    }
+  });
   setupAutoUpdater();
 
   app.on('activate', () => {

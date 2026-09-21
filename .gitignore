@@ -140,3 +140,4 @@ vite.config.ts.timestamp-*
 
 # Lyrics API settings for this machine or build. Copy data/api-config.example.json.
 data/api-config.json
+.claude

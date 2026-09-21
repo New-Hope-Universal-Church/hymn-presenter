@@ -128,9 +128,12 @@ class Database {
     await this.cache.open();
     console.log('Local cache loaded.');
 
-    // Ask the lyrics API for updates in the background
-    this._syncFromCloud().catch(err => {
+    // Ask the lyrics API for updates in the background. `syncing` resolves to
+    // { changed, version }, or to null when the API cannot be reached, so the
+    // caller can refresh the screen once new hymns have arrived.
+    this.syncing = this._syncFromCloud().catch(err => {
       console.log('Cloud sync skipped (offline):', err.message);
+      return null;
     });
   }
 
