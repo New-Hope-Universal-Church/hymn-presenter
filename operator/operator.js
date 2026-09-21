@@ -11,13 +11,14 @@ let isProjecting        = false;
 let searchTimeout       = null;
 let activeBookId        = null;
 let currentFontSize     = 100;
-let editorUnlocked      = false;
 let updateReady         = false;
 
 // ─────────────────────────────────────────────
 // Init
 // ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // Registered first, so a sync that finishes while the lists are loading is not missed.
+  window.hymnAPI.onHymnsUpdated(() => refreshLists());
   await loadBooks();
   await loadHymns('');
   setupKeyboard();
@@ -31,6 +32,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ═════════════════════════════════════════════
 // BOOKS
 // ═════════════════════════════════════════════
+// Reload the book filter and the hymn list, for example after new hymns were synced.
+async function refreshLists() {
+  await loadBooks();
+  await loadHymns(document.getElementById('searchInput').value);
+}
+
 async function loadBooks() {
   allBooks = await window.hymnAPI.getBooks();
   renderBookFilter();
@@ -45,7 +52,7 @@ function renderBookFilter() {
 }
 
 async function selectBook(value) {
-  activeBookId = value ? parseInt(value) : null;
+  activeBookId = value || null; // ids are UUID strings
   currentHymn = null;
   selectedBlockIndex  = -1;
   projectedBlockIndex = -1;
@@ -213,56 +220,14 @@ async function selectAndProject(index) {
 }
 
 // ═════════════════════════════════════════════
-// EDITOR AUTH
+// HYMN IMPORT PAGE
 // ═════════════════════════════════════════════
-async function handleEditorClick() {
-  if (editorUnlocked) {
-    await window.hymnAPI.openEditor();
-    return;
-  }
-  // Show password modal
-  document.getElementById('passwordOverlay').style.display = 'flex';
-  document.getElementById('passwordInput').value = '';
-  document.getElementById('passwordError').style.display = 'none';
-  document.getElementById('passwordInput').classList.remove('shake');
-  setTimeout(() => document.getElementById('passwordInput').focus(), 100);
-}
-
-function closePasswordModal() {
-  document.getElementById('passwordOverlay').style.display = 'none';
+// Hymns are corrected on the lyrics API's page, which opens in the browser.
+async function openImportPage() {
+  const result = await window.hymnAPI.openImportPage();
+  if (!result.opened) setStatus(result.message);
   returnFocus();
 }
-
-async function submitPassword() {
-  const pwd = document.getElementById('passwordInput').value;
-  if (!pwd) return;
-
-  const result = await window.hymnAPI.verifyEditorPassword(pwd);
-
-  if (result.success) {
-    editorUnlocked = true;
-
-    // Update button to green unlocked state
-    const btn  = document.getElementById('btnEditor');
-    const icon = document.getElementById('editorLockIcon');
-    btn.classList.add('unlocked');
-    icon.textContent = '🔓';
-
-    closePasswordModal();
-    await window.hymnAPI.openEditor();
-  } else {
-    const input = document.getElementById('passwordInput');
-    input.classList.remove('shake');
-    void input.offsetHeight; // restart animation
-    input.classList.add('shake');
-    input.value = '';
-    document.getElementById('passwordError').style.display = 'block';
-    setTimeout(() => input.focus(), 50);
-  }
-}
-
-// Menu shortcut for editor also goes through auth
-window.hymnAPI.onMenuOpenEditor(() => handleEditorClick());
 
 // ═════════════════════════════════════════════
 // DB SYNC MODAL
@@ -282,9 +247,10 @@ function setupSyncListeners() {
 
   window.hymnAPI.onDbSyncDone((result) => {
     if (result.status === 'updated') {
+      refreshLists();
       openSyncModal(
         'Database Updated',
-        `Successfully updated to v${result.version}.\nRestart the app to load the latest hymns.`,
+        `Successfully updated to version ${result.version}.\nThe hymn list has been refreshed.`,
         'done'
       );
     } else if (result.status === 'up-to-date') {
@@ -443,14 +409,7 @@ function clearSearch() {
 function setupKeyboard() {
   document.addEventListener('keydown', async (e) => {
     const searchInput = document.getElementById('searchInput');
-    const pwdOverlay  = document.getElementById('passwordOverlay');
     const syncOverlay = document.getElementById('syncOverlay');
-
-    // If password modal is open
-    if (pwdOverlay.style.display !== 'none') {
-      if (e.key === 'Escape') { closePasswordModal(); }
-      return;
-    }
 
     // If sync modal is open
     if (syncOverlay.style.display !== 'none') {

@@ -1,18 +1,16 @@
 /**
  * db-sync.js
- * Triggers a fresh sync from Supabase into the local cache.
- * Called manually from Help → Check for Database Updates.
- *
- * Uses the FULL sync (drop + rebuild) so any stale rows or rows
- * deleted by other clients are cleared out. The startup sync
- * (Database._syncFromCloud) uses the safer upsert-only merge to
- * avoid wiping concurrent writes from the user.
+ * Checks the lyrics API for a newer dataset. Called from Help -> Check for
+ * Database Updates. Startup uses the same call (Database._syncFromCloud).
+ * When the local cache is already current the API sends nothing back.
  */
 
 async function syncDatabase(db) {
   try {
-    await db._syncFromCloudFull();
-    return { status: 'updated', message: 'Database synced successfully.' };
+    const { changed, version } = await db._syncFromCloud();
+    return changed
+      ? { status: 'updated', version, message: 'Database synced successfully.' }
+      : { status: 'up-to-date', version, message: 'Your hymn database is the latest version.' };
   } catch (err) {
     console.log('Sync failed:', err.message);
     return { status: 'offline', message: 'Could not reach server. Using local cache.' };

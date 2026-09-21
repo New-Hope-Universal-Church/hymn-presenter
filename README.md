@@ -1,4 +1,4 @@
-# NHUC Hymn Projector
+# HopeSongs
 
 A dual-monitor hymn projection desktop app built for **New Hope Universal Church (NHUC)**. The operator controls which verse is displayed from their laptop, while the congregation sees a clean fullscreen display on the projector.
 
@@ -13,8 +13,8 @@ A dual-monitor hymn projection desktop app built for **New Hope Universal Church
 - 🎵 984 Methodist hymns, fully searchable by number or title
 - 📖 Multi-book support — add and manage multiple hymn collections
 - 🖥️ Dual-monitor projection — operator view on laptop, fullscreen on projector
-- ✏️ Password-protected hymn editor — create, edit, reorder and delete verses
-- ☁️ Cloud database via Supabase — edits are live for everyone instantly
+- ✏️ One-click link to the hymn import page, where lyrics are corrected
+- ☁️ Hymns are served by the NHUC lyrics API — corrections reach every device on its next sync
 - 📦 Offline support — local cache keeps the app working without internet
 - 🔤 Live font size control for the projection screen
 - ⌨️ Keyboard navigation during service
@@ -25,9 +25,9 @@ A dual-monitor hymn projection desktop app built for **New Hope Universal Church
 ## For Church Staff — Installing the App
 
 1. Go to the [Releases page](../../releases) of this repository
-2. Download the latest **NHUC Hymn Projector Setup x.x.x.exe** file
+2. Download the latest **HopeSongs Setup x.x.x.exe** file
 3. Run the installer and follow the prompts
-4. Launch **NHUC Hymn Projector** from your desktop or Start Menu
+4. Launch **HopeSongs** from your desktop or Start Menu
 
 > **Tip:** Connect your projector before opening the app. It will automatically detect the second screen and open the projection window on it.
 
@@ -47,24 +47,15 @@ A dual-monitor hymn projection desktop app built for **New Hope Universal Church
 | Change text size | Click **A−** or **A+** in the header |
 | Open projection window | Click **Open Projection** in the header |
 
-### Managing Hymns (Password Required)
+### Fixing Hymns
 
-Click **Hymn Editor** in the header — you will be prompted for the editor password. Only authorised users can access the editor.
-
-Once unlocked you can:
-
-- **Add a new hymn book** — click the `+` button next to HYMN BOOKS
-- **Add a new hymn** — select a book, then click **+ Add Hymn**
-- **Edit a hymn's details** — select a hymn and click **Edit Info**
-- **Add or edit verses** — select a hymn, then click any verse or **+ Add Verse**
-- **Reorder verses** — use the ↑ ↓ Move buttons in the edit form
-- **Delete a verse or hymn** — use the Delete button in the edit form
-
-All changes are saved directly to the cloud and reflected on all devices immediately.
+Click **Import Hymns** in the header, or press **Ctrl+E**. The lyrics import page opens in your web browser and asks for
+your name and password. Paste a hymn from the Methodist Hymn Book app, check the preview, and save. This app never sees
+those credentials and cannot change hymns itself.
 
 ### Syncing the Database
 
-Go to **Help → Check for Database Updates** to manually pull the latest hymns from the cloud. This is useful mid-session if another operator has made changes on a different device.
+Hymns download automatically the first time the app opens, and the app checks for changes each time it starts. Go to **Help → Check for Database Updates** to check right away, for example after a correction was made on the import page. If nothing changed, nothing is downloaded.
 
 ---
 
@@ -74,7 +65,7 @@ Go to **Help → Check for Database Updates** to manually pull the latest hymns 
 
 - [Node.js](https://nodejs.org) v18 or higher
 - [Git](https://git-scm.com)
-- A [Supabase](https://supabase.com) project with the tables set up (see below)
+- The URL and read-only key of the NHUC lyrics API (see below)
 
 ### Clone and Install
 
@@ -101,7 +92,8 @@ nhuc-hymns/
 ├── package.json             # Dependencies and build config
 │
 ├── data/
-│   ├── database.js          # Supabase client + local SQLite cache
+│   ├── api.js               # Read-only client for the lyrics API
+│   ├── database.js          # Local SQLite cache + sync
 │   └── db-sync.js           # Manual sync trigger (Help menu)
 │
 ├── operator/
@@ -114,11 +106,6 @@ nhuc-hymns/
 │   ├── projection.css       # Projection screen styles
 │   └── projection.js        # Receives and displays verse blocks
 │
-├── editor/
-│   ├── editor.html          # Hymn editor UI
-│   ├── editor.css           # Editor styles
-│   └── editor.js            # CRUD logic for books, hymns and verses
-│
 └── assets/
     ├── images/              # App logo and images
     └── icons/               # Window icons (.ico, .icns)
@@ -129,7 +116,7 @@ nhuc-hymns/
 | Layer | Technology |
 |-------|-----------|
 | Desktop framework | [Electron](https://electronjs.org) v40 |
-| Cloud database | [Supabase](https://supabase.com) (PostgreSQL) |
+| Hymn source | NHUC lyrics API (`/v1/snapshot`) |
 | Offline cache | [SQLite](https://sqlite.org) via [sql.js](https://sql-js.github.io/sql.js/) |
 | Auto-updates | [electron-updater](https://www.electron.build/auto-update) |
 | Build & packaging | [electron-builder](https://www.electron.build) |
@@ -140,79 +127,64 @@ nhuc-hymns/
 
 ## Database Architecture
 
-The app uses a two-layer database strategy:
-
 ```
-Supabase (PostgreSQL) ← single source of truth
-       ↓ synced on startup
+NHUC lyrics API ← single source of truth
+       ↓ synced on startup, only when the version changed
 Local SQLite cache (AppData) ← used during service
-       ↑ writes go to Supabase first, then cache
 ```
 
-**On startup:** the app loads from the local cache immediately so it is usable right away, then syncs the latest data from Supabase in the background.
+**On startup:** the app loads from the local cache immediately so it is usable right away, then asks the API for the
+dataset in the background. The app sends the version it already has. If nothing changed, the API answers with an
+empty 304 and nothing is downloaded. If something changed, the app downloads the full dataset and replaces its cache,
+so deleted hymns disappear too.
 
-**When editing:** all changes write directly to Supabase and update the local cache. Every device gets the change on their next startup or manual sync.
+**Offline:** if the API cannot be reached, the app keeps using the local cache. No hymns are lost.
 
-**Offline:** if there is no internet, the app falls back to the local cache. No hymns are lost.
+**Fixing lyrics:** hymns are corrected on the lyrics API's import page, not in this app. Changes reach every device on
+its next start or when someone clicks Help → Check for Database Updates.
 
-### Supabase Table Schema
+### Data shape
+
+The API sends, and the local cache stores, three tables. Every id is a UUID, so data from separate databases can be
+merged without clashes. The hymn number people see is its own column.
 
 ```sql
 books (
-  id    bigint primary key,
-  name  text not null unique
-  alias text 
+  id     uuid primary key,
+  name   text not null unique,
+  alias  text
 )
 
 hymns (
-  id       bigint primary key,
+  id       uuid primary key,
   number   integer not null,
   title    text not null,
   author   text,
-  book_id  bigint references books(id)
+  book_id  uuid references books(id)
 )
 
 hymn_blocks (
-  id        bigint primary key,
-  hymn_id   bigint references hymns(id) on delete cascade,
-  position  integer not null default 0,
-  type      text not null default 'verse',
+  id        uuid primary key,
+  hymn_id   uuid references hymns(id) on delete cascade,
+  position  integer not null,
+  type      text not null,   -- verse, refrain, chorus or bridge
   label     text not null,
   text      text not null
 )
 ```
 
-### Setting Up Supabase
+### Lyrics API settings
 
-1. Create a project at [supabase.com](https://supabase.com)
-2. Run the schema SQL above in the **SQL Editor**
-3. Enable Row Level Security:
+The app needs the API address and a read-only key. Copy `data/api-config.example.json` to `data/api-config.json`
+and fill it in, or set `LYRICS_API_URL` and `LYRICS_API_KEY`. The file is not committed. It has to exist on the
+machine that runs `npm run build`, because the installer includes it. The key can only read, but treat it like a
+password anyway, since anyone can extract it from an installed app. If it leaks, remove it from the server and issue a
+new one with the next release.
 
-```sql
-alter table books       enable row level security;
-alter table hymns       enable row level security;
-alter table hymn_blocks enable row level security;
-
-create policy "Public read"   on books       for select using (true);
-create policy "Public read"   on hymns       for select using (true);
-create policy "Public read"   on hymn_blocks for select using (true);
-create policy "Service write" on books       for all    using (true);
-create policy "Service write" on hymns       for all    using (true);
-create policy "Service write" on hymn_blocks for all    using (true);
-```
-
-4. Copy your **Project URL** and **service_role key** from Project Settings → API into `data/database.js`
-
----
-
-## Editor Password
-
-The hymn editor is password-protected. Only users with the password can add, edit or delete hymns. The editor unlocks for the session and locks again when the app restarts.
-
-To change the password, generate a new SHA-256 hash and replace `EDITOR_PASSWORD_HASH` in `main.js`:
+### Tests
 
 ```bash
-node -e "console.log(require('crypto').createHash('sha256').update('yournewpassword').digest('hex'))"
+npm test
 ```
 
 ---
@@ -235,7 +207,7 @@ Output in `dist/`:
 
 ```
 dist/
-├── NHUC Hymn Projector Setup 1.1.0.exe
+├── HopeSongs Setup 1.1.0.exe
 └── latest.yml
 ```
 
@@ -254,7 +226,7 @@ git push
 2. Go to GitHub → **Releases** → **Draft a new release**
 3. Set the tag to `v1.1.0` (the `v` prefix is required)
 4. Upload both files from `dist/`:
-   - `NHUC Hymn Projector Setup 1.1.0.exe`
+   - `HopeSongs Setup 1.1.0.exe`
    - `latest.yml` ← required for auto-updates
 5. Click **Publish release**
 

@@ -1,9 +1,9 @@
-const { app, BrowserWindow, ipcMain, screen, Menu, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Menu, dialog, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
-const crypto = require('crypto');
 const path   = require('path');
 const Database        = require('./data/database');
 const { syncDatabase } = require('./data/db-sync');
+const { importPageUrl } = require('./data/api');
 const { setupLogger, getLogPath } = require('./logger');
 const { THEMES, DEFAULT_THEME } = require('./themes');
 
@@ -12,14 +12,6 @@ let operatorWindow   = null;
 let projectionWindow = null;
 let db = null;
 
-// ─────────────────────────────────────────────
-// Editor Auth
-// To generate your own hash, run in terminal:
-// node -e "console.log(require('crypto').createHash('sha256').update('yourpassword').digest('hex'))"
-// Default password: nhuc2024
-// ─────────────────────────────────────────────
-const EDITOR_PASSWORD_HASH = 'fa970510078cb0cf57571eb735d0cd23319f49357cdf844a1343edcf89e027ad';
-let editorUnlocked  = false;
 let activeTheme     = DEFAULT_THEME;
 
 // ─────────────────────────────────────────────
@@ -28,7 +20,7 @@ let activeTheme     = DEFAULT_THEME;
 function createOperatorWindow() {
   operatorWindow = new BrowserWindow({
     width: 1200, height: 750, minWidth: 900, minHeight: 600,
-    title: 'NHUC Hymn Projector',
+    title: 'HopeSongs',
     backgroundColor: '#0f0f17',
     icon: path.join(__dirname, 'assets/icons', 'logo-sharpened.ico'),
     webPreferences: {
@@ -60,7 +52,7 @@ function createProjectionWindow() {
     frame: displays.length === 1,
     alwaysOnTop: displays.length > 1,
     backgroundColor: '#000000',
-    title: 'NHUC — Projection',
+    title: 'HopeSongs — Projection',
     icon: path.join(__dirname, 'assets/icons', 'logo-sharpened.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -89,16 +81,9 @@ function createAppMenu() {
       label: 'File',
       submenu: [
         {
-          label: 'Hymn Editor',
+          label: 'Import Hymns (opens in browser)',
           accelerator: 'CmdOrCtrl+E',
-          click: () => {
-            if (!operatorWindow) return;
-            if (editorUnlocked) {
-              operatorWindow.loadFile('editor/editor.html');
-            } else {
-              operatorWindow.webContents.send('menu-open-editor');
-            }
-          }
+          click: () => { openImportPage(); }
         },
         { type: 'separator' },
         { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }
@@ -158,12 +143,12 @@ function createAppMenu() {
         },
         { type: 'separator' },
         {
-          label: 'About NHUC Hymn Projector',
+          label: 'About HopeSongs',
           click: () => {
             dialog.showMessageBox({
               type: 'info',
-              title: 'About NHUC Hymn Projector',
-              message: 'NHUC Hymn Projector',
+              title: 'About HopeSongs',
+              message: 'HopeSongs',
               detail: [
                 `Version: ${app.getVersion()}`,
                 `Built for New Hope Universal Church, Ghana`,
@@ -203,6 +188,15 @@ app.whenReady().then(async () => {
   db = new Database();
   await db.connect();
   createOperatorWindow();
+
+  // The window shows the cache straight away. When the background sync brings in
+  // new hymns, tell the window to reload its lists. On a fresh install the cache
+  // starts empty, so without this the list would stay empty until a restart.
+  db.syncing.then((result) => {
+    if (result && result.changed && operatorWindow) {
+      operatorWindow.webContents.send('hymns-updated', result);
+    }
+  });
   setupAutoUpdater();
 
   app.on('activate', () => {
@@ -211,34 +205,26 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  editorUnlocked = false;
   if (process.platform !== 'darwin') app.quit();
 });
 
 // ─────────────────────────────────────────────
-// IPC — Editor Auth
+// Hymn import page
+// Hymns are corrected on the lyrics API's own page, not inside this app. The
+// page asks for a name and password, so the app never handles credentials.
 // ─────────────────────────────────────────────
-ipcMain.handle('verify-editor-password', (event, password) => {
-  const hash = crypto.createHash('sha256').update(password).digest('hex');
-  if (hash === EDITOR_PASSWORD_HASH) {
-    editorUnlocked = true;
-    return { success: true };
+async function openImportPage() {
+  const url = importPageUrl();
+  if (!url) {
+    const message = 'The lyrics API address is not set. Add it to data/api-config.json.';
+    dialog.showMessageBox({ type: 'info', title: 'Import Hymns', message });
+    return { opened: false, message };
   }
-  return { success: false };
-});
+  await shell.openExternal(url);
+  return { opened: true };
+}
 
-ipcMain.handle('is-editor-unlocked', () => editorUnlocked);
-
-ipcMain.handle('open-editor', () => {
-  if (!editorUnlocked) return { locked: true };
-  if (operatorWindow) operatorWindow.loadFile('editor/editor.html');
-  return { locked: false };
-});
-
-ipcMain.handle('close-editor', () => {
-  if (operatorWindow) operatorWindow.loadFile('operator/index.html');
-  return true;
-});
+ipcMain.handle('open-import-page', () => openImportPage());
 
 // ─────────────────────────────────────────────
 // IPC — DB Sync
@@ -285,14 +271,6 @@ ipcMain.handle('get-books', () => {
   try { return db.getAllBooks(); } catch (err) { console.error(err); return []; }
 });
 
-ipcMain.handle('add-book', async (event, name, alias) => {
-  try { return await db.addBook(name, alias); } catch (err) { console.error(err); return null; }
-});
-
-ipcMain.handle('delete-book', async (event, id) => {
-  try { await db.deleteBook(id); return true; } catch (err) { console.error(err); return false; }
-});
-
 // ─────────────────────────────────────────────
 // IPC — Hymns
 // ─────────────────────────────────────────────
@@ -305,43 +283,11 @@ ipcMain.handle('search-hymns', (event, { query, bookId } = {}) => {
   } catch (err) { console.error(err); return []; }
 });
 
-ipcMain.handle('add-hymn', async (event, data) => {
-  try { return await db.addHymn(data); } catch (err) { console.error(err); return null; }
-});
-
-ipcMain.handle('update-hymn', async (event, data) => {
-  try { await db.updateHymn(data); return true; } catch (err) { console.error(err); return false; }
-});
-
-ipcMain.handle('delete-hymn', async (event, id) => {
-  try { await db.deleteHymn(id); return true; } catch (err) { console.error(err); return false; }
-});
-
 // ─────────────────────────────────────────────
 // IPC — Blocks
 // ─────────────────────────────────────────────
 ipcMain.handle('get-hymn-blocks', (event, hymnId) => {
   try { return db.getHymnBlocks(hymnId); } catch (err) { console.error(err); return []; }
-});
-
-ipcMain.handle('update-block', async (event, { id, label, text, type }) => {
-  try { await db.updateBlock({ id, label, text, type }); return true; }
-  catch (err) { console.error(err); return false; }
-});
-
-ipcMain.handle('delete-block', async (event, id) => {
-  try { await db.deleteBlock(id); return true; }
-  catch (err) { console.error(err); return false; }
-});
-
-ipcMain.handle('add-block', async (event, { hymnId, type, label, text, position }) => {
-  try { return await db.addBlock({ hymnId, type, label, text, position }); }
-  catch (err) { console.error(err); return null; }
-});
-
-ipcMain.handle('reorder-blocks', async (event, blocks) => {
-  try { await db.reorderBlocks(blocks); return true; }
-  catch (err) { console.error(err); return false; }
 });
 
 // ─────────────────────────────────────────────

@@ -1,7 +1,7 @@
 {
   "name": "hymn-presenter",
-  "version": "2.0.0",
-  "description": "A hymn presenter app built for New Hope Universal Church (NHUC)",
+  "version": "3.0.0",
+  "description": "HopeSongs, a hymn and song projection app built for New Hope Universal Church (NHUC)",
   "author": {
     "name": "Aaron Katey Kudadjie",
     "github": "https://github.com/Adehwam21/"
@@ -9,6 +9,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "test": "node --test \"tests/**/*.test.js\"",
     "build": "electron-builder --publish never"
   },
   "devDependencies": {
@@ -22,7 +23,7 @@
   "build": {
     "compression": "maximum",
     "appId": "com.nhuc.hymnprojector",
-    "productName": "NHUC Hymn Presenter",
+    "productName": "HopeSongs",
     "icon": "assets/icons/logo-transparent.ico",
     "publish": {
       "provider": "github",
@@ -48,11 +49,14 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Hymn Presenter"
+      "shortcutName": "HopeSongs"
     },
     "files": [
       "**/*",
-      "!node_modules/electron*"
+      "!node_modules/electron*",
+      "!.claude/**",
+      "!dist/**",
+      "!tests/**"
     ]
   }
 }
