@@ -23,14 +23,23 @@
       <div class="idle-church">NHUC MEDIA</div>
     </div>
 
-    <!-- Content state (shown when a verse is projected) -->
+    <!-- Content state (shown when a hymn page is projected) -->
     <div class="content-state" id="contentState" style="display:none;">
-      <div class="hymn-meta">
-        <span class="hymn-number-badge" id="hymnNumber"></span>
-        <span class="hymn-title-display" id="hymnTitle"></span>
-        <span class="block-label-display" id="blockLabel"></span>
+      <div class="page-frame" id="pageFrame">
+
+        <!-- Intro page: book code + hymn number, then the title -->
+        <div class="page page-intro" id="introPage">
+          <div class="intro-number" id="introNumber"></div>
+          <div class="intro-title" id="introTitle"></div>
+        </div>
+
+        <!-- Verse / refrain page: marker in the left gutter, level with the first line -->
+        <div class="page page-verse" id="versePage">
+          <div class="verse-marker" id="verseMarker"></div>
+          <div class="verse-text" id="verseText"></div>
+        </div>
+
       </div>
-      <div class="verse-text" id="verseText"></div>
       <div class="block-counter" id="blockCounter"></div>
     </div>
 

@@ -116,89 +116,94 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: clamp(30px, 5vw, 80px) clamp(40px, 8vw, 140px);
+  padding: clamp(36px, 5vh, 64px) clamp(24px, 3vw, 56px);
   position: relative;
   z-index: 2;
   text-align: center;
 }
 
-/* Hymn meta at top */
-.hymn-meta {
-  position: absolute;
-  top: clamp(16px, 3vh, 32px);
-  left: 0;
-  right: 0;
+/* The area a page must stay inside. projection.js shrinks --page-font until
+   the active page fits, so long text can never run past the frame. */
+.page-frame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  opacity: 0;
-  animation: metaSlideIn 500ms 100ms ease both;
 }
 
-@keyframes metaSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-
-  to {
-    opacity: 1;
-  }
+.page {
+  display: none;
+  width: 100%;
+  font-size: var(--page-font, 48px);
 }
 
-.hymn-number-badge {
-  font-family: var(--font-display);
-  font-size: clamp(18px, 1.2vw, 20px);
-  font-weight: 900;
-  color: var(--accent);
-  letter-spacing: 2px;
-  padding: 4px 12px;
-  border: 1px solid var(--badge-border);
-  border-radius: 20px;
-  transition: color var(--transition), border-color var(--transition);
+/* ── Intro page: book code + number, then the title ── */
+.content-state.type-intro .page-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6em;
 }
 
-.hymn-title-display {
-  font-family: var(--font-display);
-  font-size: clamp(20px, 1.3vw, 22px);
-  font-weight: 800;
-  color: var(--text-meta);
-  letter-spacing: 2px;
-  padding: 4px 12px;
-  border: 1px solid var(--title-border);
-  border-radius: 20px;
-  max-width: 70vw;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color var(--transition), border-color var(--transition);
-}
-
-.block-label-display {
-  font-family: var(--font-display);
-  font-size: clamp(18px, 1.2vw, 20px);
-  font-weight: 900;
-  color: var(--text-label);
-  letter-spacing: 2px;
-  padding: 4px 12px;
-  border: 1px solid var(--label-border);
-  border-radius: 20px;
-  transition: color var(--transition), border-color var(--transition);
-}
-
-/* Verse text */
-.verse-text {
+.intro-number {
   font-family: var(--font-verse);
-  font-size: clamp(38px, 4.5vw, 62px);
+  font-size: 0.85em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-meta);
+  opacity: 0;
+  animation: textReveal 500ms 100ms ease both;
+  transition: color var(--transition);
+}
+
+.intro-title {
+  font-family: var(--font-verse);
+  font-size: 1.1em;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--text-verse);
+  opacity: 0;
+  animation: textReveal 500ms 200ms ease both;
+  transition: color var(--transition);
+}
+
+/* ── Verse page: marker | text | spacer ──────────────
+   The marker shares a row with the text and is baseline-aligned to its first
+   line, so it always sits at the left edge level with line one, wherever the
+   text block lands. The spacer keeps the text centred on the screen. */
+.content-state:not(.type-intro) .page-verse {
+  --gutter: 1.8em;
+  display: grid;
+  grid-template-columns: var(--gutter) minmax(0, 1fr) var(--gutter);
+  align-items: first baseline;
+}
+
+.verse-marker {
+  grid-column: 1;
+  justify-self: start;
+  font-family: var(--font-verse);
+  font-size: 1em;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text-meta);
+  opacity: 0;
+  animation: textReveal 500ms 100ms ease both;
+  transition: color var(--transition);
+}
+
+.verse-text {
+  grid-column: 2;
+  font-family: var(--font-verse);
   font-weight: 600;
   line-height: 1.15;
   color: var(--text-verse);
   white-space: pre-line;
+  text-wrap: balance;
   text-align: center;
-  max-width: 100vw;
   opacity: 0;
   animation: textReveal 500ms 200ms ease both;
   transition: color var(--transition);
@@ -213,6 +218,17 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes metaSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
   }
 }
 

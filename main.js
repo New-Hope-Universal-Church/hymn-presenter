@@ -81,7 +81,7 @@ function createAppMenu() {
       label: 'File',
       submenu: [
         {
-          label: 'Import Hymns (opens in browser)',
+          label: 'Manage Hymns (opens in browser)',
           accelerator: 'CmdOrCtrl+E',
           click: () => { openImportPage(); }
         },
