@@ -123,7 +123,7 @@ async function selectHymn(index) {
   renderHymnHeader(hymn);
 
   try {
-    currentBlocks = await window.hymnAPI.getHymnBlocks(hymn.id);
+    currentBlocks = withIntroPage(hymn, await window.hymnAPI.getHymnBlocks(hymn.id));
     renderBlockList(currentBlocks);
     const book = allBooks.find(b => b.id === hymn.book_id);
     const bookLabel = book ? ` · ${book.name}` : '';
@@ -150,6 +150,14 @@ function renderHymnHeader(hymn) {
 // ═════════════════════════════════════════════
 // BLOCKS
 // ═════════════════════════════════════════════
+// Every hymn opens with an intro page (book code + number, then the title) ahead
+// of its verses. The projection window builds it from the hymn details sent with
+// each block, so the block itself only needs to mark the page type.
+function withIntroPage(hymn, blocks) {
+  if (!blocks.length) return blocks;
+  return [{ id: `${hymn.id}-intro`, type: 'intro', label: 'Intro', text: hymn.title }, ...blocks];
+}
+
 function renderBlockList(blocks) {
   const list = document.getElementById('blockList');
   const nav  = document.getElementById('blockNav');
